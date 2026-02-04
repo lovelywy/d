@@ -16,10 +16,12 @@ import type { Site, InsertSite } from "@shared/schema";
 
 export default function App() {
   const { toast } = useToast();
-  const [totalCapital, setTotalCapital] = useState<string>("10000");
+  const [totalUsdtInput, setTotalUsdtInput] = useState<string>("300");
   const [exchangeRate, setExchangeRate] = useState<string>("35.5");
   const [calcResults, setCalcResults] = useState<any[]>([]);
   const [profits, setProfits] = useState({ min: 0, max: 0 });
+
+  const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
   const { data: sites = [] } = useQuery<Site[]>({ queryKey: ["/api/sites"] });
 
@@ -53,19 +55,25 @@ export default function App() {
   });
 
   const calculateSplit = () => {
-    const capital = parseFloat(totalCapital);
+    const rawUsdt = parseFloat(totalUsdtInput);
     const rate = parseFloat(exchangeRate);
-    if (isNaN(capital) || isNaN(rate) || sites.length === 0) return;
+    if (isNaN(rawUsdt) || isNaN(rate) || sites.length === 0) return;
 
-    const totalUsdt = capital / rate;
+    // Deduct 1 USDT fee per site automatically
+    const feeTotal = sites.length * 1;
+    const netUsdt = rawUsdt - feeTotal;
+    
+    if (netUsdt <= 0) {
+      toast({ title: "Insufficient USDT", description: "Not enough USDT to cover the 1 USDT fee per site.", variant: "destructive" });
+      return;
+    }
     
     // Site Credit = (USDT_Portion * Site_Deposit_Rate) * (1 + Bonus_Percent / 100)
     // Goal: Site Credit is equal for all sites.
-    // Site Credit = Total USDT / Sum(1 / R_i) where R_i = Rate_i * (1 + Bonus_i/100)
     
     const R = sites.map(s => parseFloat(s.depositRate) * (1 + parseFloat(s.bonusPercent) / 100));
     const sumInvR = R.reduce((sum, r) => sum + (1 / r), 0);
-    const targetCreditPerSite = totalUsdt / sumInvR;
+    const targetCreditPerSite = netUsdt / sumInvR;
 
     const results = sites.map((s, i) => {
       const usdtUsed = targetCreditPerSite / R[i];
@@ -85,8 +93,8 @@ export default function App() {
     const B = A * 0.95;
     const Y = A + B;
     setProfits({
-      min: Y - capital,
-      max: totalCredits - capital
+      min: Y - totalCapitalThb,
+      max: totalCredits - totalCapitalThb
     });
   };
 
@@ -147,8 +155,9 @@ export default function App() {
               <CardHeader><CardTitle>Capital & Rate</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Total Capital (THB)</Label>
-                  <Input type="number" value={totalCapital} onChange={e => setTotalCapital(e.target.value)} />
+                  <Label>Total USDT</Label>
+                  <Input type="number" value={totalUsdtInput} onChange={e => setTotalUsdtInput(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">≈ {totalCapitalThb.toLocaleString()} THB</p>
                 </div>
                 <div className="space-y-2">
                   <Label>USDT Rate (Binance TH)</Label>
