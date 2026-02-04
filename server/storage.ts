@@ -9,7 +9,6 @@ import {
 import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  // Sites CRUD
   getSites(): Promise<Site[]>;
   getSite(id: number): Promise<Site | undefined>;
   createSite(site: InsertSite): Promise<Site>;
