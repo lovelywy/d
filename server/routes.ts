@@ -1,16 +1,125 @@
+
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Server } from "http";
 import { storage } from "./storage";
+import { api } from "@shared/routes";
+import { z } from "zod";
+import https from "https";
+
+// Helper to fetch external API using native Node https
+function fetchBinancePrice(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = "https://api.binance.com/api/v3/ticker/price?symbol=USDTTHB";
+    https.get(url, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.price) {
+            resolve(json.price);
+          } else {
+            reject(new Error("Invalid response from Binance"));
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on("error", (e) => reject(e));
+  });
+}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  // === RATES ===
+  app.get(api.rates.get.path, async (_req, res) => {
+    try {
+      const price = await fetchBinancePrice();
+      res.json({ price });
+    } catch (error) {
+      console.error("Binance API error:", error);
+      // Fallback or error
+      res.status(500).json({ message: "Failed to fetch rate from Binance" });
+    }
+  });
+
+  // === SITES ===
+  app.get(api.sites.list.path, async (_req, res) => {
+    const sites = await storage.getSites();
+    res.json(sites);
+  });
+
+  app.post(api.sites.create.path, async (req, res) => {
+    try {
+      const input = api.sites.create.input.parse(req.body);
+      const site = await storage.createSite(input);
+      res.status(201).json(site);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.put(api.sites.update.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const input = api.sites.update.input.parse(req.body);
+      const site = await storage.updateSite(id, input);
+      res.json(site);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(404).json({ message: "Site not found" });
+    }
+  });
+
+  app.delete(api.sites.delete.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSite(id);
+      res.status(204).send();
+    } catch (err) {
+      res.status(404).json({ message: "Site not found" });
+    }
+  });
+
+  app.post(api.sites.resetTurnover.path, async (_req, res) => {
+    await storage.resetAllTurnover();
+    res.json({ message: "All turnovers reset" });
+  });
+
+  // === SEED DATA ===
+  const existingSites = await storage.getSites();
+  if (existingSites.length === 0) {
+    await storage.createSite({
+      name: "Site A",
+      depositRate: "34.5",
+      bonusPercent: "10",
+      targetTurnover: "5000",
+      currentTurnover: "0",
+      isActive: true
+    });
+    await storage.createSite({
+      name: "Site B",
+      depositRate: "35.0",
+      bonusPercent: "5",
+      targetTurnover: "3000",
+      currentTurnover: "0",
+      isActive: true
+    });
+  }
 
   return httpServer;
 }
