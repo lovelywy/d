@@ -1,38 +1,54 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import {
+  sites,
+  type Site,
+  type InsertSite,
+  type UpdateSiteRequest
+} from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Sites CRUD
+  getSites(): Promise<Site[]>;
+  getSite(id: number): Promise<Site | undefined>;
+  createSite(site: InsertSite): Promise<Site>;
+  updateSite(id: number, updates: UpdateSiteRequest): Promise<Site>;
+  deleteSite(id: number): Promise<void>;
+  resetAllTurnover(): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getSites(): Promise<Site[]> {
+    return await db.select().from(sites).orderBy(sites.id);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getSite(id: number): Promise<Site | undefined> {
+    const [site] = await db.select().from(sites).where(eq(sites.id, id));
+    return site;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createSite(insertSite: InsertSite): Promise<Site> {
+    const [site] = await db.insert(sites).values(insertSite).returning();
+    return site;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateSite(id: number, updates: UpdateSiteRequest): Promise<Site> {
+    const [site] = await db
+      .update(sites)
+      .set(updates)
+      .where(eq(sites.id, id))
+      .returning();
+    return site;
+  }
+
+  async deleteSite(id: number): Promise<void> {
+    await db.delete(sites).where(eq(sites.id, id));
+  }
+
+  async resetAllTurnover(): Promise<void> {
+    await db.update(sites).set({ currentTurnover: '0' });
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
