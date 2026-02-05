@@ -109,10 +109,35 @@ export default function App() {
   };
 
   const speak = (text: string) => {
+    // Stop any current speech before starting new one
+    window.speechSynthesis.cancel();
+    
     const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Find a Thai voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const thaiVoice = voices.find(v => v.lang === 'th-TH' || v.lang.includes('th'));
+    
+    if (thaiVoice) {
+      utterance.voice = thaiVoice;
+    }
+    
     utterance.lang = 'th-TH';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    
     window.speechSynthesis.speak(utterance);
   };
+
+  // Ensure voices are loaded (Chrome needs this)
+  useEffect(() => {
+    window.speechSynthesis.getVoices();
+    const handleVoicesChanged = () => {
+      window.speechSynthesis.getVoices();
+    };
+    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+  }, []);
 
   const updateBet = async (site: Site, betAmount: string) => {
     const bet = parseFloat(betAmount);
