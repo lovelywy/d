@@ -1,61 +1,66 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-body: 'Outfit', sans-serif;
-  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-display: 'Inter', sans-serif;
 
-  /* Emerald/Money Theme with Dark Undertones */
-  --background: 160 30% 98%;
-  --foreground: 160 50% 5%;
-  
-  --primary: 160 84% 39%;
-  --primary-foreground: 0 0% 100%;
-  
-  --secondary: 160 20% 94%;
-  --secondary-foreground: 160 50% 15%;
-  
-  --muted: 160 10% 92%;
-  --muted-foreground: 160 15% 40%;
-  
-  --accent: 142 70% 50%;
-  --accent-foreground: 160 50% 5%;
-  
-  --destructive: 0 84% 60%;
+  --background: 220 20% 6%;
+  --foreground: 40 10% 90%;
+
+  --card: 220 18% 9%;
+  --card-foreground: 40 10% 90%;
+  --card-border: transparent;
+
+  --popover: 220 18% 10%;
+  --popover-foreground: 40 10% 90%;
+  --popover-border: transparent;
+
+  --primary: 38 90% 55%;
+  --primary-foreground: 220 20% 6%;
+  --primary-border: transparent;
+
+  --secondary: 220 15% 13%;
+  --secondary-foreground: 40 10% 80%;
+  --secondary-border: transparent;
+
+  --muted: 220 15% 12%;
+  --muted-foreground: 220 10% 50%;
+  --muted-border: transparent;
+
+  --accent: 38 70% 45%;
+  --accent-foreground: 220 20% 6%;
+  --accent-border: transparent;
+
+  --destructive: 0 70% 50%;
   --destructive-foreground: 0 0% 98%;
+  --destructive-border: transparent;
 
-  --border: 160 15% 90%;
-  --input: 160 15% 90%;
-  --ring: 160 84% 39%;
-  
-  --radius: 1rem;
-}
+  --border: 220 15% 15%;
+  --input: 220 15% 15%;
+  --ring: 38 90% 55%;
 
-.dark {
-  --background: 160 50% 3%;
-  --foreground: 160 10% 98%;
-  
-  --primary: 160 84% 39%;
-  --primary-foreground: 0 0% 100%;
-  
-  --secondary: 160 30% 10%;
-  --secondary-foreground: 160 10% 98%;
-  
-  --muted: 160 30% 10%;
-  --muted-foreground: 160 20% 60%;
-  
-  --accent: 142 70% 40%;
-  --accent-foreground: 0 0% 100%;
-  
-  --destructive: 0 62% 30%;
-  --destructive-foreground: 0 0% 98%;
-  
-  --border: 160 30% 12%;
-  --input: 160 30% 12%;
-  --ring: 160 84% 39%;
+  --radius: 0.5rem;
+
+  --chart-1: 38 90% 55%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 270 50% 55%;
+  --chart-4: 200 70% 50%;
+  --chart-5: 0 70% 50%;
+
+  --sidebar: 220 20% 7%;
+  --sidebar-foreground: 40 10% 85%;
+  --sidebar-border: 220 15% 14%;
+  --sidebar-ring: 38 90% 55%;
+  --sidebar-primary: 38 90% 55%;
+  --sidebar-primary-foreground: 220 20% 6%;
+  --sidebar-primary-border: transparent;
+  --sidebar-accent: 220 15% 13%;
+  --sidebar-accent-foreground: 40 10% 85%;
+  --sidebar-accent-border: transparent;
 }
 
 @layer base {
@@ -72,29 +77,14 @@
   }
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full hover:bg-muted-foreground/30 transition-colors;
-}
-
-/* Glassmorphism Utilities */
-.glass-panel {
-  @apply bg-white/70 dark:bg-black/40 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-xl;
-}
-
-/* Animation Utilities */
-.animate-in {
-  animation: fadeIn 0.4s ease-out;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  @apply bg-border rounded-full;
 }
 
 input[type="number"]::-webkit-inner-spin-button,
@@ -116,4 +106,36 @@ input[type="number"]::-webkit-outer-spin-button {
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-15px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: float-up 0.5s ease-out;
+}
+
+.gold-glow {
+  box-shadow: 0 0 20px hsl(38 90% 55% / 0.15), 0 0 60px hsl(38 90% 55% / 0.05);
+}
+
+.gold-text {
+  background: linear-gradient(135deg, hsl(38, 90%, 65%), hsl(38, 90%, 50%), hsl(38, 70%, 40%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtle-grid {
+  background-image:
+    linear-gradient(hsl(220, 15%, 10%) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(220, 15%, 10%) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
