@@ -76,7 +76,7 @@ export async function registerRoutes(
 
   app.put(api.sites.update.path, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       const input = api.sites.update.input.parse(req.body);
       const site = await storage.updateSite(id, input);
       res.json(site);
@@ -93,7 +93,7 @@ export async function registerRoutes(
 
   app.delete(api.sites.delete.path, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       await storage.deleteSite(id);
       res.status(204).send();
     } catch (err) {
