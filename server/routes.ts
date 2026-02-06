@@ -7,19 +7,19 @@ import { z } from "zod";
 import https from "https";
 
 // Helper to fetch external API using native Node https
-function fetchBinancePrice(): Promise<string> {
+function fetchCoinGeckoPrice(): Promise<string> {
   return new Promise((resolve, reject) => {
-    const url = "https://api.binance.com/api/v3/ticker/price?symbol=USDTTHB";
+    const url = "https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=thb";
     https.get(url, (res) => {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => {
         try {
           const json = JSON.parse(data);
-          if (json.price) {
-            resolve(json.price);
+          if (json.tether && json.tether.thb) {
+            resolve(json.tether.thb.toString());
           } else {
-            reject(new Error("Invalid response from Binance"));
+            reject(new Error("Invalid response from CoinGecko"));
           }
         } catch (e) {
           reject(e);
@@ -37,12 +37,11 @@ export async function registerRoutes(
   // === RATES ===
   app.get(api.rates.get.path, async (_req, res) => {
     try {
-      const price = await fetchBinancePrice();
+      const price = await fetchCoinGeckoPrice();
       res.json({ price });
     } catch (error) {
-      console.error("Binance API error:", error);
-      // Fallback or error
-      res.status(500).json({ message: "Failed to fetch rate from Binance" });
+      console.error("CoinGecko API error:", error);
+      res.status(500).json({ message: "Failed to fetch rate from CoinGecko" });
     }
   });
 
