@@ -5,6 +5,8 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import https from "https";
+import fs from "fs";
+import path from "path";
 
 // Helper to fetch external API using native Node https
 function fetchCoinGeckoPrice(): Promise<string> {
@@ -116,6 +118,31 @@ export async function registerRoutes(
     try {
       const input = api.history.create.input.parse(req.body);
       const entry = await storage.createHistory(input);
+
+      const logDir = path.join(process.cwd(), "mission_logs");
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+
+      const details = input.details as any;
+      const now = new Date();
+      const dateStr = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const logFile = path.join(logDir, `mission_${dateStr}.log`);
+
+      let logContent = `=== USDT Mission Log ===\n`;
+      logContent += `Date: ${now.toLocaleString("th-TH")}\n`;
+      logContent += `Capital: ${parseFloat(input.initialThb).toLocaleString()} THB (${input.totalUsdt} USDT)\n`;
+      logContent += `Exchange Rate: ${details.exchangeRate} THB/USDT\n`;
+      logContent += `Profit: ${parseFloat(input.profit).toLocaleString()} THB\n`;
+      logContent += `\n--- Per-Site Details ---\n`;
+      if (details.sites) {
+        for (const s of details.sites) {
+          logContent += `${s.name}: Remaining = ${parseFloat(s.balance || "0").toLocaleString()} THB, Target Turnover = ${parseFloat(s.target || "0").toLocaleString()} THB\n`;
+        }
+      }
+      logContent += `========================\n`;
+
+      fs.writeFileSync(logFile, logContent, "utf-8");
+      console.log(`Mission log saved: ${logFile}`);
+
       res.status(201).json(entry);
     } catch (err) {
       res.status(400).json({ message: "Invalid history data" });
