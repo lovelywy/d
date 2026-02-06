@@ -149,6 +149,27 @@ export async function registerRoutes(
     }
   });
 
+  app.put(api.history.update.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const input = api.history.update.input.parse(req.body);
+      const entry = await storage.updateHistory(id, input);
+      res.json(entry);
+    } catch (err) {
+      res.status(404).json({ message: "History entry not found" });
+    }
+  });
+
+  app.delete(api.history.delete.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      await storage.deleteHistory(id);
+      res.status(204).send();
+    } catch (err) {
+      res.status(404).json({ message: "History entry not found" });
+    }
+  });
+
   // === SEED DATA ===
   const existingSites = await storage.getSites();
   if (existingSites.length === 0) {

@@ -20,10 +20,11 @@ export const sites = pgTable("sites", {
 
 export const history = pgTable("history", {
   id: serial("id").primaryKey(),
+  userName: text("user_name").default(""),
   initialThb: numeric("initial_thb").notNull(),
   totalUsdt: numeric("total_usdt").notNull(),
   profit: numeric("profit").notNull(),
-  details: jsonb("details").notNull(), // JSON containing site names, rates, etc.
+  details: jsonb("details").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -46,3 +47,4 @@ export type UpdateSiteRequest = Partial<InsertSite> & { remainingBalance?: strin
 
 export type History = typeof history.$inferSelect;
 export type InsertHistory = z.infer<typeof insertHistorySchema>;
+export type UpdateHistoryRequest = Partial<Omit<InsertHistory, 'details'>> & { userName?: string | null };
