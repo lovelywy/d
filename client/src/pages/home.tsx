@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -22,6 +22,8 @@ export default function App() {
   const [calcResults, setCalcResults] = useState<any[]>([]);
   const [profits, setProfits] = useState({ min: 0, max: 0 });
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState("calculator");
+  const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean } | null>(null);
 
   const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
@@ -33,6 +35,21 @@ export default function App() {
       setSelectedSiteIds(sites.map(s => s.id));
     }
   }, [sites]);
+
+  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      const loadVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const thai = voices.find(v => v.lang === 'th-TH') || voices.find(v => v.lang.startsWith('th'));
+        if (thai) cachedVoiceRef.current = thai;
+      };
+      loadVoice();
+      window.speechSynthesis.addEventListener('voiceschanged', loadVoice);
+      return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoice);
+    }
+  }, []);
 
   const fetchRateMutation = useMutation({
     mutationFn: async () => {
@@ -92,20 +109,28 @@ export default function App() {
       queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
       setCalcResults([]);
       setProfits({ min: 0, max: 0 });
-      toast({ title: "รีเซ็ตข้อมูลเทิร์นโอเวอร์ทั้งหมดเรียบร้อย" });
     },
   });
 
-  const speak = (text: string, options: { slow?: boolean } = {}) => {
+  const speak = useCallback((text: string, options: { slow?: boolean } = {}) => {
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    const thaiVoice = voices.find(v => v.lang === 'th-TH' || v.lang.includes('th'));
-    if (thaiVoice) utterance.voice = thaiVoice;
+    if (cachedVoiceRef.current) {
+      utterance.voice = cachedVoiceRef.current;
+    } else {
+      const voices = window.speechSynthesis.getVoices();
+      const thaiVoice = voices.find(v => v.lang === 'th-TH') || voices.find(v => v.lang.startsWith('th'));
+      if (thaiVoice) {
+        utterance.voice = thaiVoice;
+        cachedVoiceRef.current = thaiVoice;
+      }
+    }
     utterance.lang = 'th-TH';
     utterance.rate = options.slow ? 0.8 : 1.0;
+    utterance.volume = 1.0;
     window.speechSynthesis.speak(utterance);
-  };
+  }, []);
 
   const calculateSplit = (withVoice = false) => {
     const rawUsdt = parseFloat(totalUsdtInput);
@@ -186,6 +211,10 @@ export default function App() {
     }
   };
 
+  const saveBalance = useCallback(async (id: number, bal: string) => {
+    await updateSiteMutation.mutateAsync({ id, updates: { remainingBalance: bal } });
+  }, [updateSiteMutation]);
+
   const trackerSites = sites.filter(s => parseFloat(s.targetTurnover || "0") > 0);
   const allSitesCompleted = trackerSites.length > 0 && trackerSites.every(s => parseFloat(s.currentTurnover || "0") >= parseFloat(s.targetTurnover || "0"));
   const hasBalance = (s: Site) => s.remainingBalance !== null && s.remainingBalance !== undefined && s.remainingBalance !== "";
@@ -206,23 +235,36 @@ export default function App() {
       }
     });
 
-    if (finalProfit < 0) {
-      speak(`ภารกิจเสร็จสิ้นค่ะ ขาดทุน ${Math.abs(Math.round(finalProfit))} บาท สู้ใหม่รอบหน้านะคะ`, { slow: true });
+    const isProfit = finalProfit >= 0;
+    setCelebration({ show: true, profit: finalProfit, isProfit });
+
+    let voiceText: string;
+    if (!isProfit) {
+      voiceText = `ภารกิจเสร็จสิ้นค่ะ ขาดทุน ${Math.abs(Math.round(finalProfit))} บาท สู้ใหม่รอบหน้านะคะ`;
     } else if (finalProfit <= 5000) {
-      speak(`เย้! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท ดีใจด้วยนะคะ!`);
+      voiceText = `เย้! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท ดีใจด้วยนะคะ!`;
     } else if (finalProfit <= 20000) {
-      speak(`ว้าว! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท สุดยอดเลยค่ะ!`);
+      voiceText = `ว้าว! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท สุดยอดเลยค่ะ!`;
     } else {
-      speak(`เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท มหาศาลเลยค่ะ!`);
+      voiceText = `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท มหาศาลเลยค่ะ!`;
     }
+    speak(voiceText);
 
-    toast({ title: "ภารกิจสำเร็จ!", description: `กำไรสุทธิ: ${Math.round(finalProfit).toLocaleString()} บาท` });
-
-    await resetAllMutation.mutateAsync();
+    setTimeout(async () => {
+      setCelebration(null);
+      try {
+        await resetAllMutation.mutateAsync();
+      } catch (_) {}
+      setActiveTab("history");
+    }, 4000);
   };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
+      {celebration?.show && (
+        <CelebrationOverlay profit={celebration.profit} isProfit={celebration.isProfit} />
+      )}
+
       <div className="max-w-5xl mx-auto space-y-8">
         <header className="flex flex-wrap justify-between items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-app-title">USDT Financial Mission</h1>
@@ -231,7 +273,7 @@ export default function App() {
           </Button>
         </header>
 
-        <Tabs defaultValue="calculator" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="calculator" data-testid="tab-calculator"><Calculator className="mr-2 h-4 w-4" /> Calculator</TabsTrigger>
             <TabsTrigger value="tracker" data-testid="tab-tracker"><TrendingUp className="mr-2 h-4 w-4" /> Tracker</TabsTrigger>
@@ -355,7 +397,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {trackerSites.map(site => (
-                <TrackerCard key={site.id} site={site} onUpdate={updateBet} onBalanceUpdate={(id, bal) => updateSiteMutation.mutate({ id, updates: { remainingBalance: bal } })} />
+                <TrackerCard key={site.id} site={site} onUpdate={updateBet} onBalanceSave={saveBalance} />
               ))}
             </div>
 
@@ -426,6 +468,108 @@ export default function App() {
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
+    </div>
+  );
+}
+
+function CelebrationOverlay({ profit, isProfit }: { profit: number; isProfit: boolean }) {
+  const [animatedValue, setAnimatedValue] = useState(0);
+  const [scale, setScale] = useState(0.3);
+  const [opacity, setOpacity] = useState(0);
+
+  useEffect(() => {
+    setOpacity(1);
+    setScale(1);
+
+    const target = Math.round(profit);
+    const duration = 1500;
+    const steps = 60;
+    const stepDuration = duration / steps;
+    let current = 0;
+    const increment = target / steps;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
+        setAnimatedValue(target);
+        clearInterval(timer);
+      } else {
+        setAnimatedValue(Math.round(current));
+      }
+    }, stepDuration);
+
+    return () => clearInterval(timer);
+  }, [profit]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      style={{
+        background: isProfit
+          ? 'radial-gradient(circle, rgba(0,128,0,0.85) 0%, rgba(0,60,0,0.95) 100%)'
+          : 'radial-gradient(circle, rgba(180,0,0,0.85) 0%, rgba(80,0,0,0.95) 100%)',
+        opacity,
+        transition: 'opacity 0.5s ease-out',
+      }}
+      data-testid="celebration-overlay"
+    >
+      <div
+        className="text-center"
+        style={{
+          transform: `scale(${scale})`,
+          transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        }}
+      >
+        {isProfit && (
+          <div className="text-6xl mb-4" style={{ animation: 'bounce 1s infinite' }}>
+            <Trophy className="h-20 w-20 mx-auto text-yellow-300 drop-shadow-lg" />
+          </div>
+        )}
+        <p className="text-white text-2xl font-bold mb-2" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+          {isProfit ? "ภารกิจสำเร็จ!" : "ภารกิจเสร็จสิ้น"}
+        </p>
+        <p className="text-white text-lg mb-4" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+          {isProfit ? "กำไร" : "ขาดทุน"}
+        </p>
+        <div
+          className="font-black tabular-nums"
+          style={{
+            fontSize: 'clamp(3rem, 10vw, 6rem)',
+            color: isProfit ? '#FFD700' : '#FF6B6B',
+            textShadow: isProfit
+              ? '0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4), 0 4px 20px rgba(0,0,0,0.5)'
+              : '0 0 30px rgba(255,100,100,0.8), 0 4px 20px rgba(0,0,0,0.5)',
+            animation: isProfit ? 'pulse-glow 1.5s ease-in-out infinite' : 'none',
+          }}
+          data-testid="text-celebration-profit"
+        >
+          {isProfit ? "+" : ""}{animatedValue.toLocaleString()}
+        </div>
+        <p className="text-white text-3xl font-bold mt-2" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+          บาท
+        </p>
+
+        {isProfit && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: `${Math.random() * 8 + 4}px`,
+                  height: `${Math.random() * 8 + 4}px`,
+                  background: ['#FFD700', '#FFA500', '#FF6347', '#00FF7F', '#87CEEB'][i % 5],
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animation: `confetti-fall ${2 + Math.random() * 3}s linear infinite`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  opacity: 0.8,
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -517,12 +661,23 @@ function HistoryRow({ entry, onUpdate, onDelete }: { entry: History, onUpdate: (
   );
 }
 
-function TrackerCard({ site, onUpdate, onBalanceUpdate }: { site: Site, onUpdate: (site: Site, amount: string) => void, onBalanceUpdate: (id: number, bal: string) => void }) {
+function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: (site: Site, amount: string) => void, onBalanceSave: (id: number, bal: string) => void }) {
   const [bet, setBet] = useState("");
+  const [localBalance, setLocalBalance] = useState(site.remainingBalance || "");
   const current = parseFloat(site.currentTurnover || "0");
   const target = parseFloat(site.targetTurnover || "0");
   const progress = target > 0 ? Math.min((current / target) * 100, 100) : 0;
   const isComplete = current >= target;
+
+  useEffect(() => {
+    setLocalBalance(site.remainingBalance || "");
+  }, [site.remainingBalance]);
+
+  const handleBalanceBlur = () => {
+    if (localBalance !== (site.remainingBalance || "")) {
+      onBalanceSave(site.id, localBalance);
+    }
+  };
 
   return (
     <Card className={isComplete ? "border-green-500/50" : ""} data-testid={`card-tracker-${site.id}`}>
@@ -541,7 +696,15 @@ function TrackerCard({ site, onUpdate, onBalanceUpdate }: { site: Site, onUpdate
             <p className="text-sm font-bold text-green-600 text-center">ครบเทิร์นแล้ว!</p>
             <div className="space-y-1">
               <Label className="text-xs">ยอดเงินคงเหลือหลังเล่น (บาท)</Label>
-              <Input data-testid={`input-remaining-${site.id}`} type="number" placeholder="ป้อนยอดเงินสุทธิ" value={site.remainingBalance || ""} onChange={e => onBalanceUpdate(site.id, e.target.value)} />
+              <Input
+                data-testid={`input-remaining-${site.id}`}
+                type="number"
+                placeholder="ป้อนยอดเงินสุทธิ"
+                value={localBalance}
+                onChange={e => setLocalBalance(e.target.value)}
+                onBlur={handleBalanceBlur}
+                onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+              />
             </div>
           </div>
         ) : (
