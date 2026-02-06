@@ -263,14 +263,17 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen bg-background subtle-grid p-4 md:p-8">
       {celebration?.show && (
         <CelebrationOverlay profit={celebration.profit} isProfit={celebration.isProfit} />
       )}
 
-      <div className="max-w-5xl mx-auto space-y-8">
-        <header className="flex flex-wrap justify-between items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-app-title">USDT Financial Mission</h1>
+      <div className="max-w-5xl mx-auto space-y-6">
+        <header className="flex flex-wrap justify-between items-center gap-2 py-2">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight gold-text" data-testid="text-app-title">USDT Financial Mission</h1>
+            <p className="text-xs text-muted-foreground mt-1">Arbitrage Profit System</p>
+          </div>
           <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
             <RefreshCcw className="h-4 w-4" />
           </Button>
@@ -383,7 +386,7 @@ export default function App() {
               </Card>
 
               {calcResults.length > 0 && (
-                <Card className="border-primary/20">
+                <Card className="border-primary/20 gold-glow">
                   <CardHeader><CardTitle>ผลลัพธ์ (ยอดที่ต้องฝาก)</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -406,11 +409,11 @@ export default function App() {
                     <div className="pt-4 border-t space-y-2">
                       <div className="flex flex-wrap justify-between gap-1 font-bold">
                         <span>กำไรขั้นต่ำคาดการณ์:</span>
-                        <span className={profits.min >= 0 ? "text-green-600" : "text-red-600"} data-testid="text-profit-min">{Math.round(profits.min).toLocaleString()} บาท</span>
+                        <span className={profits.min >= 0 ? "text-emerald-400" : "text-red-400"} data-testid="text-profit-min">{Math.round(profits.min).toLocaleString()} บาท</span>
                       </div>
                       <div className="flex flex-wrap justify-between gap-1 font-bold">
                         <span>กำไรสูงสุดคาดการณ์:</span>
-                        <span className="text-green-600" data-testid="text-profit-max">{Math.round(profits.max).toLocaleString()} บาท</span>
+                        <span className="text-emerald-400" data-testid="text-profit-max">{Math.round(profits.max).toLocaleString()} บาท</span>
                       </div>
                     </div>
                     <Button className="w-full mt-4" onClick={saveTargets} data-testid="button-save-targets">บันทึกเป้าหมายไปที่ Tracker</Button>
@@ -549,8 +552,8 @@ function CelebrationOverlay({ profit, isProfit }: { profit: number; isProfit: bo
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       style={{
         background: isProfit
-          ? 'radial-gradient(circle, rgba(0,128,0,0.85) 0%, rgba(0,60,0,0.95) 100%)'
-          : 'radial-gradient(circle, rgba(180,0,0,0.85) 0%, rgba(80,0,0,0.95) 100%)',
+          ? 'radial-gradient(ellipse at center, rgba(38,90,55,0.9) 0%, rgba(10,14,20,0.98) 70%)'
+          : 'radial-gradient(ellipse at center, rgba(120,20,20,0.9) 0%, rgba(10,14,20,0.98) 70%)',
         opacity,
         transition: 'opacity 0.5s ease-out',
       }}
@@ -565,48 +568,48 @@ function CelebrationOverlay({ profit, isProfit }: { profit: number; isProfit: bo
       >
         {isProfit && (
           <div className="text-6xl mb-4" style={{ animation: 'bounce 1s infinite' }}>
-            <Trophy className="h-20 w-20 mx-auto text-yellow-300 drop-shadow-lg" />
+            <Trophy className="h-20 w-20 mx-auto text-amber-400 drop-shadow-lg" style={{ filter: 'drop-shadow(0 0 20px rgba(251,191,36,0.6))' }} />
           </div>
         )}
-        <p className="text-white text-2xl font-bold mb-2" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-          {isProfit ? "ภารกิจสำเร็จ!" : "ภารกิจเสร็จสิ้น"}
+        <p className="text-white/90 text-2xl font-bold mb-2 tracking-wide" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.7)' }}>
+          {isProfit ? "MISSION COMPLETE" : "MISSION ENDED"}
         </p>
-        <p className="text-white text-lg mb-4" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-          {isProfit ? "กำไร" : "ขาดทุน"}
+        <p className="text-white/60 text-sm uppercase tracking-[0.3em] mb-6">
+          {isProfit ? "profit secured" : "loss recorded"}
         </p>
         <div
           className="font-black tabular-nums"
           style={{
             fontSize: 'clamp(3rem, 10vw, 6rem)',
-            color: isProfit ? '#FFD700' : '#FF6B6B',
+            color: isProfit ? '#F59E0B' : '#EF4444',
             textShadow: isProfit
-              ? '0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4), 0 4px 20px rgba(0,0,0,0.5)'
-              : '0 0 30px rgba(255,100,100,0.8), 0 4px 20px rgba(0,0,0,0.5)',
-            animation: isProfit ? 'pulse-glow 1.5s ease-in-out infinite' : 'none',
+              ? '0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.2), 0 4px 30px rgba(0,0,0,0.8)'
+              : '0 0 40px rgba(239,68,68,0.6), 0 4px 30px rgba(0,0,0,0.8)',
+            animation: isProfit ? 'pulse-glow 2s ease-in-out infinite' : 'none',
           }}
           data-testid="text-celebration-profit"
         >
           {isProfit ? "+" : ""}{animatedValue.toLocaleString()}
         </div>
-        <p className="text-white text-3xl font-bold mt-2" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-          บาท
+        <p className="text-white/80 text-2xl font-bold mt-2 tracking-wider" style={{ textShadow: '0 2px 15px rgba(0,0,0,0.7)' }}>
+          THB
         </p>
 
         {isProfit && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {Array.from({ length: 20 }).map((_, i) => (
+            {Array.from({ length: 25 }).map((_, i) => (
               <div
                 key={i}
                 className="absolute rounded-full"
                 style={{
-                  width: `${Math.random() * 8 + 4}px`,
-                  height: `${Math.random() * 8 + 4}px`,
-                  background: ['#FFD700', '#FFA500', '#FF6347', '#00FF7F', '#87CEEB'][i % 5],
+                  width: `${Math.random() * 6 + 2}px`,
+                  height: `${Math.random() * 6 + 2}px`,
+                  background: ['#F59E0B', '#D97706', '#FBBF24', '#10B981', '#6EE7B7'][i % 5],
                   left: `${Math.random() * 100}%`,
                   top: `${Math.random() * 100}%`,
                   animation: `confetti-fall ${2 + Math.random() * 3}s linear infinite`,
                   animationDelay: `${Math.random() * 2}s`,
-                  opacity: 0.8,
+                  opacity: 0.7,
                 }}
               />
             ))}
@@ -689,7 +692,7 @@ function HistoryRow({ entry, onUpdate, onDelete }: { entry: History, onUpdate: (
         <span className="text-sm" data-testid={`text-history-capital-${entry.id}`}>
           ทุน {capital.toLocaleString()} บาท
         </span>
-        <span className={`font-bold ${isProfit ? "text-green-600" : "text-red-600"}`} data-testid={`text-history-profit-${entry.id}`}>
+        <span className={`font-bold ${isProfit ? "text-emerald-400" : "text-red-400"}`} data-testid={`text-history-profit-${entry.id}`}>
           {isProfit ? "+" : ""}{profit.toLocaleString()} บาท
         </span>
         <Button variant="ghost" size="icon" onClick={() => setEditing(true)} data-testid={`button-edit-history-${entry.id}`}>
@@ -722,10 +725,10 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
   };
 
   return (
-    <Card className={isComplete ? "border-green-500/50" : ""} data-testid={`card-tracker-${site.id}`}>
+    <Card className={isComplete ? "border-emerald-500/30 gold-glow" : ""} data-testid={`card-tracker-${site.id}`}>
       <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-lg">{site.name}</CardTitle>
-        {isComplete && <Trophy className="h-5 w-5 text-green-600" />}
+        {isComplete && <Trophy className="h-5 w-5 text-amber-400" />}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1">
@@ -735,7 +738,7 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
         </div>
         {isComplete ? (
           <div className="space-y-2">
-            <p className="text-sm font-bold text-green-600 text-center">ครบเทิร์นแล้ว!</p>
+            <p className="text-sm font-bold text-emerald-400 text-center">ครบเทิร์นแล้ว!</p>
             <div className="space-y-1">
               <Label className="text-xs">ยอดเงินคงเหลือหลังเล่น (บาท)</Label>
               <Input
