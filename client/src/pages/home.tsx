@@ -12,7 +12,6 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, RotateCcw, Trophy, History as HistoryIcon } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 
@@ -393,34 +392,32 @@ export default function App() {
             <Card>
               <CardHeader><CardTitle>ประวัติรอบการเล่น</CardTitle></CardHeader>
               <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                  {historyList.map((h, i) => (
-                    <AccordionItem key={h.id} value={`item-${i}`}>
-                      <AccordionTrigger>
-                        <div className="flex flex-wrap justify-between gap-2 w-full pr-4">
-                          <span data-testid={`text-history-date-${h.id}`}>{new Date(h.createdAt || '').toLocaleString('th-TH')}</span>
-                          <span className={parseFloat(h.profit) >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"} data-testid={`text-history-profit-${h.id}`}>
-                            {parseFloat(h.profit) >= 0 ? "+" : ""}{parseFloat(h.profit).toLocaleString()} บาท
+                {historyList.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground" data-testid="text-no-history">ไม่มีประวัติการเล่น</p>
+                ) : (
+                  <div className="space-y-2">
+                    {historyList.map(h => {
+                      const profit = parseFloat(h.profit);
+                      const capital = parseFloat(h.initialThb);
+                      const isProfit = profit >= 0;
+                      return (
+                        <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-md" data-testid={`row-history-${h.id}`}>
+                          <span className="text-sm text-muted-foreground" data-testid={`text-history-date-${h.id}`}>
+                            {new Date(h.createdAt || '').toLocaleString('th-TH')}
                           </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-2 text-sm text-muted-foreground">
-                          <p>ทุนตั้งต้น: {parseFloat(h.initialThb).toLocaleString()} บาท ({h.totalUsdt} USDT)</p>
-                          <div className="space-y-1">
-                            {(h.details as any).sites?.map((s: any, j: number) => (
-                              <div key={j} className="flex flex-wrap justify-between gap-1">
-                                <span>{s.name}:</span>
-                                <span>{parseFloat(s.balance).toLocaleString()} บาท</span>
-                              </div>
-                            ))}
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm" data-testid={`text-history-capital-${h.id}`}>
+                              ทุน {capital.toLocaleString()} บาท
+                            </span>
+                            <span className={`font-bold ${isProfit ? "text-green-600" : "text-red-600"}`} data-testid={`text-history-profit-${h.id}`}>
+                              {isProfit ? "+" : ""}{profit.toLocaleString()} บาท
+                            </span>
                           </div>
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-                {historyList.length === 0 && <p className="text-center py-8 text-muted-foreground" data-testid="text-no-history">ไม่มีประวัติการเล่น</p>}
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
