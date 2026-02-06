@@ -18,9 +18,11 @@ A financial simulation app for USDT/THB arbitrage across multiple gambling websi
 - `client/src/App.tsx` - Router setup
 
 ## Features
-1. **Calculator Tab**: USDT input → auto THB conversion → select sites → calculate deposit per site (THB + USDT columns) → predict profit range
-2. **Turnover Tracker Tab**: Track betting progress per site, Thai voice alerts, remaining balance input after completion, mission confirm with profit announcement, reset button
-3. **History Tab**: Logs completed missions with date, profit, site details
+1. **Calculator Tab**: USDT input → auto THB conversion → checkbox site selection (max 5) → calculate deposit per site (THB + USDT columns) → predict profit range
+2. **Site Management**: Full CRUD dialog - create new sites, inline edit (name, rate, bonus, balance), delete with confirmation
+3. **Site Configs**: Save/load named checkbox configurations to localStorage for quick switching
+4. **Turnover Tracker Tab**: Track betting progress per site, Thai voice alerts, remaining balance input after completion, mission confirm with profit announcement, reset button
+5. **History Tab**: Logs completed missions with date, profit, site details
 
 ## API Endpoints
 - `GET /api/rates/usdt-thb` - Fetch from CoinGecko

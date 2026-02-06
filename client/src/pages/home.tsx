@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 
 export default function App() {
@@ -21,10 +21,12 @@ export default function App() {
   const [exchangeRate, setExchangeRate] = useState<string>("35.5");
   const [calcResults, setCalcResults] = useState<any[]>([]);
   const [profits, setProfits] = useState({ min: 0, max: 0 });
-  const [siteSlots, setSiteSlots] = useState<(number | null)[]>([null, null, null, null, null]);
-  const selectedSiteIds = siteSlots.filter((id): id is number => id !== null);
+  const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState("calculator");
   const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean } | null>(null);
+  const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
+  const [configName, setConfigName] = useState("");
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
 
   const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
@@ -32,10 +34,15 @@ export default function App() {
   const { data: historyList = [] } = useQuery<History[]>({ queryKey: ["/api/history"] });
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem("site-configs");
+      if (stored) setSavedConfigs(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     if (sites.length > 0 && selectedSiteIds.length === 0) {
-      const initial: (number | null)[] = [null, null, null, null, null];
-      sites.slice(0, 5).forEach((s, i) => { initial[i] = s.id; });
-      setSiteSlots(initial);
+      setSelectedSiteIds(sites.slice(0, 5).map(s => s.id));
     }
   }, [sites]);
 
@@ -314,74 +321,136 @@ export default function App() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
                   <CardTitle>รายชื่อเว็บสำหรับใช้ทำกำไร</CardTitle>
-                  <Dialog>
-                    <DialogTrigger asChild><Button size="sm" data-testid="button-manage-sites"><Plus className="mr-2 h-4 w-4" /> จัดการเว็บ</Button></DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader><DialogTitle>จัดการรายชื่อเว็บ</DialogTitle></DialogHeader>
-                      <SiteForm onSubmit={data => createSiteMutation.mutate(data)} />
-                      <div className="mt-4 border-t pt-4">
-                        <Label className="mb-2 block">เว็บทั้งหมด</Label>
-                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                          {sites.map(site => (
-                            <div key={site.id} className="flex items-center justify-between p-2 border rounded">
-                              <span className="text-sm font-medium">{site.name}</span>
-                              <Button variant="ghost" size="icon" onClick={() => deleteSiteMutation.mutate(site.id)} data-testid={`button-delete-site-${site.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <div className="flex gap-2">
+                    <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
+                      <DialogTrigger asChild><Button size="sm" variant="outline" data-testid="button-manage-sites"><Settings className="mr-2 h-4 w-4" /> จัดการเว็บ</Button></DialogTrigger>
+                      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                        <DialogHeader><DialogTitle>จัดการรายชื่อเว็บ</DialogTitle></DialogHeader>
+                        <SiteManager
+                          sites={sites}
+                          onAdd={data => createSiteMutation.mutate(data)}
+                          onUpdate={(id, updates) => updateSiteMutation.mutate({ id, updates })}
+                          onDelete={id => {
+                            deleteSiteMutation.mutate(id);
+                            setSelectedSiteIds(prev => prev.filter(sid => sid !== id));
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {siteSlots.map((slotId, slotIndex) => {
-                    const selectedSite = slotId ? sites.find(s => s.id === slotId) : null;
-                    const usedIds = siteSlots.filter((id, i) => i !== slotIndex && id !== null) as number[];
-                    const availableSites = sites.filter(s => !usedIds.includes(s.id));
-                    return (
-                      <div key={slotIndex} className="flex items-center gap-3" data-testid={`slot-site-${slotIndex}`}>
-                        <span className="text-sm font-bold text-muted-foreground w-6 text-center">{slotIndex + 1}.</span>
-                        <div className="flex-1">
-                          <Select
-                            value={slotId ? String(slotId) : ""}
-                            onValueChange={val => {
-                              setSiteSlots(prev => {
-                                const next = [...prev];
-                                if (val === "__clear__") {
-                                  next[slotIndex] = null;
-                                } else {
-                                  next[slotIndex] = parseInt(val);
-                                }
-                                return next;
-                              });
-                            }}
+                  {sites.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-4">ยังไม่มีเว็บ กดปุ่ม "จัดการเว็บ" เพื่อเพิ่มเว็บ</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sites.map(site => {
+                        const isSelected = selectedSiteIds.includes(site.id);
+                        const atMax = selectedSiteIds.length >= 5 && !isSelected;
+                        return (
+                          <label
+                            key={site.id}
+                            className={`flex items-center gap-3 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                              isSelected ? "border-primary/40 bg-primary/5" : "border-border/50"
+                            } ${atMax ? "opacity-40 cursor-not-allowed" : "hover-elevate"}`}
+                            data-testid={`checkbox-site-${site.id}`}
                           >
-                            <SelectTrigger data-testid={`select-site-${slotIndex}`}>
-                              <SelectValue placeholder="-- เลือกเว็บ --" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {slotId && (
-                                <SelectItem value="__clear__" data-testid={`option-clear-${slotIndex}`}>
-                                  <span className="text-muted-foreground">-- ยกเลิกเลือก --</span>
-                                </SelectItem>
-                              )}
-                              {availableSites.map(site => (
-                                <SelectItem key={site.id} value={String(site.id)} data-testid={`option-site-${slotIndex}-${site.id}`}>
-                                  {site.name} <span className="text-muted-foreground ml-1">(Rate: {site.depositRate} | Bonus: {site.bonusPercent}%)</span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {selectedSite && (
-                          <div className="text-xs text-muted-foreground hidden sm:block">
-                            <span>Rate: {selectedSite.depositRate}</span>
+                            <Checkbox
+                              checked={isSelected}
+                              disabled={atMax}
+                              onCheckedChange={(checked) => {
+                                if (checked === true) {
+                                  setSelectedSiteIds(prev => [...prev, site.id]);
+                                } else {
+                                  setSelectedSiteIds(prev => prev.filter(id => id !== site.id));
+                                }
+                              }}
+                              data-testid={`input-checkbox-${site.id}`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium">{site.name}</span>
+                              <span className="text-xs text-muted-foreground ml-2">Rate: {site.depositRate} | Bonus: {site.bonusPercent}%</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t">
+                    <p className="text-xs text-muted-foreground">
+                      {selectedSiteIds.length} / 5 เว็บ
+                      {selectedSiteIds.length >= 5 && <span className="text-primary ml-1">(เต็มแล้ว)</span>}
+                    </p>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedSiteIds(sites.slice(0, 5).map(s => s.id))} data-testid="button-select-all">เลือกทั้งหมด</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedSiteIds([])} data-testid="button-deselect-all">ล้าง</Button>
+                    </div>
+                  </div>
+
+                  {savedConfigs.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1"><FolderOpen className="h-3 w-3" /> โหลดค่าที่บันทึกไว้</p>
+                      <div className="flex flex-wrap gap-1">
+                        {savedConfigs.map((cfg, i) => (
+                          <div key={i} className="flex items-center gap-0.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const validIds = cfg.siteIds.filter(id => sites.some(s => s.id === id)).slice(0, 5);
+                                setSelectedSiteIds(validIds);
+                                toast({ title: `โหลด "${cfg.name}" แล้ว` });
+                              }}
+                              data-testid={`button-load-config-${i}`}
+                            >
+                              {cfg.name}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                const next = savedConfigs.filter((_, j) => j !== i);
+                                setSavedConfigs(next);
+                                localStorage.setItem("site-configs", JSON.stringify(next));
+                                toast({ title: `ลบ "${cfg.name}" แล้ว` });
+                              }}
+                              data-testid={`button-delete-config-${i}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
                           </div>
-                        )}
+                        ))}
                       </div>
-                    );
-                  })}
-                  <p className="text-xs text-muted-foreground text-center pt-1">เลือกเว็บ {selectedSiteIds.length} / 5 เว็บ</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Input
+                      placeholder="ชื่อค่าเว็บ เช่น 'ชุดA'"
+                      value={configName}
+                      onChange={e => setConfigName(e.target.value)}
+                      className="flex-1"
+                      data-testid="input-config-name"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!configName.trim() || selectedSiteIds.length === 0}
+                      onClick={() => {
+                        const newConfig = { name: configName.trim(), siteIds: [...selectedSiteIds] };
+                        const next = [...savedConfigs, newConfig];
+                        setSavedConfigs(next);
+                        localStorage.setItem("site-configs", JSON.stringify(next));
+                        setConfigName("");
+                        toast({ title: `บันทึก "${newConfig.name}" แล้ว (${selectedSiteIds.length} เว็บ)` });
+                      }}
+                      data-testid="button-save-config"
+                    >
+                      <BookmarkPlus className="mr-1 h-4 w-4" /> บันทึก
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -620,19 +689,89 @@ function CelebrationOverlay({ profit, isProfit }: { profit: number; isProfit: bo
   );
 }
 
-function SiteForm({ onSubmit }: { onSubmit: (data: InsertSite) => void }) {
+function SiteManager({ sites, onAdd, onUpdate, onDelete }: {
+  sites: Site[];
+  onAdd: (data: InsertSite) => void;
+  onUpdate: (id: number, updates: Partial<InsertSite>) => void;
+  onDelete: (id: number) => void;
+}) {
   const [name, setName] = useState("");
   const [rate, setRate] = useState("36.5");
   const [bonus, setBonus] = useState("0");
   const [balance, setBalance] = useState("0");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRate, setEditRate] = useState("");
+  const [editBonus, setEditBonus] = useState("");
+  const [editBalance, setEditBalance] = useState("");
+  const { toast } = useToast();
+
+  const startEdit = (site: Site) => {
+    setEditingId(site.id);
+    setEditName(site.name);
+    setEditRate(site.depositRate);
+    setEditBonus(site.bonusPercent);
+    setEditBalance(site.existingBalance || "0");
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editName.trim()) return;
+    onUpdate(editingId, { name: editName.trim(), depositRate: editRate, bonusPercent: editBonus, existingBalance: editBalance });
+    setEditingId(null);
+    toast({ title: "บันทึกแล้ว" });
+  };
 
   return (
-    <div className="space-y-4 pt-4">
-      <div className="space-y-2"><Label>ชื่อเว็บ</Label><Input data-testid="input-site-name" value={name} onChange={e => setName(e.target.value)} /></div>
-      <div className="space-y-2"><Label>อัตราแลก (THB/USDT)</Label><Input data-testid="input-site-rate" type="number" value={rate} onChange={e => setRate(e.target.value)} /></div>
-      <div className="space-y-2"><Label>โบนัส %</Label><Input data-testid="input-site-bonus" type="number" value={bonus} onChange={e => setBonus(e.target.value)} /></div>
-      <div className="space-y-2"><Label>เครดิตที่มีอยู่เดิม (บาท)</Label><Input data-testid="input-site-balance" type="number" value={balance} onChange={e => setBalance(e.target.value)} /></div>
-      <Button className="w-full" onClick={() => { if (!name) return; onSubmit({ name, depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); }} data-testid="button-add-site">เพิ่มรายชื่อเว็บ</Button>
+    <div className="space-y-4">
+      <div className="space-y-3 p-3 border rounded-md bg-card">
+        <p className="text-sm font-medium flex items-center gap-1"><Plus className="h-4 w-4" /> เพิ่มเว็บใหม่</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="col-span-2 space-y-1"><Label className="text-xs">ชื่อเว็บ</Label><Input data-testid="input-site-name" value={name} onChange={e => setName(e.target.value)} placeholder="เช่น Fun88" /></div>
+          <div className="space-y-1"><Label className="text-xs">อัตราแลก</Label><Input data-testid="input-site-rate" type="number" value={rate} onChange={e => setRate(e.target.value)} /></div>
+          <div className="space-y-1"><Label className="text-xs">โบนัส %</Label><Input data-testid="input-site-bonus" type="number" value={bonus} onChange={e => setBonus(e.target.value)} /></div>
+          <div className="col-span-2 space-y-1"><Label className="text-xs">เครดิตที่มีอยู่เดิม (บาท)</Label><Input data-testid="input-site-balance" type="number" value={balance} onChange={e => setBalance(e.target.value)} /></div>
+        </div>
+        <Button className="w-full" onClick={() => { if (!name.trim()) return; onAdd({ name: name.trim(), depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); toast({ title: "เพิ่มเว็บแล้ว" }); }} data-testid="button-add-site"><Plus className="mr-1 h-4 w-4" /> เพิ่มเว็บ</Button>
+      </div>
+
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium mb-3">เว็บทั้งหมด ({sites.length})</p>
+        {sites.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">ยังไม่มีเว็บ</p>
+        ) : (
+          <div className="space-y-2">
+            {sites.map(site => (
+              <div key={site.id} className="border rounded-md p-3" data-testid={`manage-site-${site.id}`}>
+                {editingId === site.id ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="col-span-2 space-y-1"><Label className="text-xs">ชื่อเว็บ</Label><Input data-testid={`edit-name-${site.id}`} value={editName} onChange={e => setEditName(e.target.value)} /></div>
+                      <div className="space-y-1"><Label className="text-xs">อัตราแลก</Label><Input data-testid={`edit-rate-${site.id}`} type="number" value={editRate} onChange={e => setEditRate(e.target.value)} /></div>
+                      <div className="space-y-1"><Label className="text-xs">โบนัส %</Label><Input data-testid={`edit-bonus-${site.id}`} type="number" value={editBonus} onChange={e => setEditBonus(e.target.value)} /></div>
+                      <div className="col-span-2 space-y-1"><Label className="text-xs">เครดิตเดิม</Label><Input data-testid={`edit-balance-${site.id}`} type="number" value={editBalance} onChange={e => setEditBalance(e.target.value)} /></div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} data-testid={`button-cancel-edit-site-${site.id}`}><X className="h-4 w-4 mr-1" /> ยกเลิก</Button>
+                      <Button size="sm" onClick={saveEdit} data-testid={`button-save-site-${site.id}`}><Check className="h-4 w-4 mr-1" /> บันทึก</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{site.name}</p>
+                      <p className="text-xs text-muted-foreground">Rate: {site.depositRate} | Bonus: {site.bonusPercent}% | เครดิตเดิม: {site.existingBalance || "0"}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => startEdit(site)} data-testid={`button-edit-site-${site.id}`}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => { if (confirm(`ลบ "${site.name}"?`)) onDelete(site.id); }} data-testid={`button-delete-site-${site.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
