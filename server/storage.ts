@@ -7,7 +7,8 @@ import {
   type InsertSite,
   type UpdateSiteRequest,
   type History,
-  type InsertHistory
+  type InsertHistory,
+  type UpdateHistoryRequest
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -21,6 +22,8 @@ export interface IStorage {
   // History
   getHistory(): Promise<History[]>;
   createHistory(entry: InsertHistory): Promise<History>;
+  updateHistory(id: number, updates: UpdateHistoryRequest): Promise<History>;
+  deleteHistory(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -66,6 +69,19 @@ export class DatabaseStorage implements IStorage {
   async createHistory(entry: InsertHistory): Promise<History> {
     const [record] = await db.insert(history).values(entry).returning();
     return record;
+  }
+
+  async updateHistory(id: number, updates: UpdateHistoryRequest): Promise<History> {
+    const [record] = await db
+      .update(history)
+      .set(updates)
+      .where(eq(history.id, id))
+      .returning();
+    return record;
+  }
+
+  async deleteHistory(id: number): Promise<void> {
+    await db.delete(history).where(eq(history.id, id));
   }
 }
 

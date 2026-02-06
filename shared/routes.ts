@@ -89,6 +89,28 @@ export const api = {
       responses: {
         201: z.custom<typeof history.$inferSelect>(),
       },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/history/:id',
+      input: z.object({
+        userName: z.string().optional(),
+        profit: z.string().optional(),
+        initialThb: z.string().optional(),
+        totalUsdt: z.string().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof history.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/history/:id',
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
     }
   }
 };

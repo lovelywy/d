@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, RotateCcw, Trophy, History as HistoryIcon } from "lucide-react";
+import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 
 export default function App() {
@@ -66,6 +66,20 @@ export default function App() {
   const addHistoryMutation = useMutation({
     mutationFn: async (entry: any) => {
       return apiRequest("POST", "/api/history", entry);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/history"] }),
+  });
+
+  const updateHistoryMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: any }) => {
+      return apiRequest("PUT", buildUrl("/api/history/:id", { id }), updates);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/history"] }),
+  });
+
+  const deleteHistoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", buildUrl("/api/history/:id", { id }));
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/history"] }),
   });
@@ -395,27 +409,17 @@ export default function App() {
                 {historyList.length === 0 ? (
                   <p className="text-center py-8 text-muted-foreground" data-testid="text-no-history">ไม่มีประวัติการเล่น</p>
                 ) : (
-                  <div className="space-y-2">
-                    {historyList.map(h => {
-                      const profit = parseFloat(h.profit);
-                      const capital = parseFloat(h.initialThb);
-                      const isProfit = profit >= 0;
-                      return (
-                        <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-md" data-testid={`row-history-${h.id}`}>
-                          <span className="text-sm text-muted-foreground" data-testid={`text-history-date-${h.id}`}>
-                            {new Date(h.createdAt || '').toLocaleString('th-TH')}
-                          </span>
-                          <div className="flex items-center gap-4">
-                            <span className="text-sm" data-testid={`text-history-capital-${h.id}`}>
-                              ทุน {capital.toLocaleString()} บาท
-                            </span>
-                            <span className={`font-bold ${isProfit ? "text-green-600" : "text-red-600"}`} data-testid={`text-history-profit-${h.id}`}>
-                              {isProfit ? "+" : ""}{profit.toLocaleString()} บาท
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="space-y-3">
+                    {historyList.map(h => (
+                      <HistoryRow
+                        key={h.id}
+                        entry={h}
+                        onUpdate={(id, updates) => updateHistoryMutation.mutate({ id, updates })}
+                        onDelete={(id) => {
+                          if (confirm("ต้องการลบประวัตินี้?")) deleteHistoryMutation.mutate(id);
+                        }}
+                      />
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -440,6 +444,75 @@ function SiteForm({ onSubmit }: { onSubmit: (data: InsertSite) => void }) {
       <div className="space-y-2"><Label>โบนัส %</Label><Input data-testid="input-site-bonus" type="number" value={bonus} onChange={e => setBonus(e.target.value)} /></div>
       <div className="space-y-2"><Label>เครดิตที่มีอยู่เดิม (บาท)</Label><Input data-testid="input-site-balance" type="number" value={balance} onChange={e => setBalance(e.target.value)} /></div>
       <Button className="w-full" onClick={() => { if (!name) return; onSubmit({ name, depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); }} data-testid="button-add-site">เพิ่มรายชื่อเว็บ</Button>
+    </div>
+  );
+}
+
+function HistoryRow({ entry, onUpdate, onDelete }: { entry: History, onUpdate: (id: number, updates: any) => void, onDelete: (id: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(entry.userName || "");
+  const [editProfit, setEditProfit] = useState(entry.profit);
+
+  const profit = parseFloat(entry.profit);
+  const capital = parseFloat(entry.initialThb);
+  const isProfit = profit >= 0;
+
+  const handleSave = () => {
+    onUpdate(entry.id, { userName: editName, profit: editProfit });
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditName(entry.userName || "");
+    setEditProfit(entry.profit);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="p-3 border rounded-md space-y-3" data-testid={`row-history-${entry.id}`}>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">ชื่อผู้ใช้</Label>
+            <Input data-testid={`input-history-name-${entry.id}`} value={editName} onChange={e => setEditName(e.target.value)} placeholder="ชื่อผู้ใช้" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">กำไร/ขาดทุน (บาท)</Label>
+            <Input data-testid={`input-history-profit-${entry.id}`} type="number" value={editProfit} onChange={e => setEditProfit(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" size="sm" onClick={handleCancel} data-testid={`button-cancel-edit-${entry.id}`}><X className="h-4 w-4 mr-1" /> ยกเลิก</Button>
+          <Button size="sm" onClick={handleSave} data-testid={`button-save-history-${entry.id}`}><Save className="h-4 w-4 mr-1" /> บันทึก</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-md" data-testid={`row-history-${entry.id}`}>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm text-muted-foreground" data-testid={`text-history-date-${entry.id}`}>
+          {new Date(entry.createdAt || '').toLocaleString('th-TH')}
+        </span>
+        {entry.userName && (
+          <span className="text-xs font-medium" data-testid={`text-history-user-${entry.id}`}>{entry.userName}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-sm" data-testid={`text-history-capital-${entry.id}`}>
+          ทุน {capital.toLocaleString()} บาท
+        </span>
+        <span className={`font-bold ${isProfit ? "text-green-600" : "text-red-600"}`} data-testid={`text-history-profit-${entry.id}`}>
+          {isProfit ? "+" : ""}{profit.toLocaleString()} บาท
+        </span>
+        <Button variant="ghost" size="icon" onClick={() => setEditing(true)} data-testid={`button-edit-history-${entry.id}`}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => onDelete(entry.id)} data-testid={`button-delete-history-${entry.id}`}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
     </div>
   );
 }
