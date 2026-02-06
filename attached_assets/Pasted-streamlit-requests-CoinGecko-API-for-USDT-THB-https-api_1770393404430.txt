@@ -1,0 +1,41 @@
+streamlit, requests (CoinGecko API for USDT/THB: https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=thb), gtts, playsound, threading (non-blocking audio), json, datetime for logging.
+Key Adjustments & Features:
+Calculation Display Rule:
+After "คำนวณ" button: Show deposited THB per site as the actual amount user must input/deposit on the site (USDT_portion * site_rate).
+Do NOT show bonus separately on UI.
+But in backend: total_credit_per_site = deposited_THB + (deposited_THB * bonus_percent / 100)
+total_credits = sum(total_credit_per_site across selected sites)
+Use total_credits for profit predictions and turnover targets.
+Profit Predictions (unchanged logic but use adjusted total_credits):
+A = total_credits / 2
+B = A * 0.95
+Y = A + B
+min_profit = initial_THB - Y
+max_profit = total_credits - initial_THB
+Display clearly.
+Turnover Tracker Tab:
+Per site: Progress bar (cumulative_bets / target), text below: "ยอดเดิมพันสะสม: X บาท / เป้า: Y บาท | เหลือ: Z บาท"
+Input field for bet amount, update cumulative → TTS: "เหลือเทิร์นเว็บ [name]: [Z] บาท"
+When remaining <=0: status "ครบเทิร์นแล้ว!", TTS success "ภารกิจสำเร็จเว็บ [name]! เย้!!", show input field for "ยอดเงินคงเหลือหลังเล่น" (remaining balance)
+Add "รีเซ็ต" button per site or global to reset bets/progress.
+Mission Complete & Profit Announcement:
+When ALL sites have remaining input filled and turnover complete: Show "ยืนยันภารกิจสำเร็จ" button.
+On confirm: total_remaining = sum(remaining balances from all sites)
+profit = total_remaining - initial_THB  (do not include pre-deposit balances)
+Announce with varied gTTS (expressive via text hack):
+loss (<0): slow=True, text="อุ๊ย... ขาดทุนนะคะ... สู้ใหม่รอบหน้าดีกว่า"
+low (0-5000): normal, text="กำไรนิดหน่อย แต่ก็ดีใจจ้าาา เยี่ยมเลย!"
+med (5001-20000): normal, text="ว้าวว! กำไรดีมากเลยนะคะ เย้!!! สุดยอด!"
+high (>20000): normal, text="โคตรเกินนนน!!! กำไรมหาศาลเลยยยยย เย้ยยยยยยย!!!! ฉ่ำสุดๆ ไปเลยยยย สุดในจักรวาลดดดด!!!"
+For high profit: split TTS into 2-3 segments (e.g. hype intro + main + repeat "เย้!!"), play sequentially.
+Play "เสียงเฮ" (hype cheer) – use text like "เฮ!!! เฮ!!! เฮ!!!" as extra segment if high.
+History Logging:
+After confirm: Save round data to JSON ('history.json'): timestamp, initial_THB, total_USDT, sites used, profit, etc.
+Add "ประวัติรอบ" expander/tab to show past rounds (date, profit, etc.) for review or start new round.
+Additional:
+Site mgmt: Add/Edit/Delete sites (name, rate, bonus %), multiselect to choose for calc.
+Fetch rate button, fallback manual input.
+Edit existing balance post-calc if needed.
+Error handling, non-blocking audio, full comments.
+Replit: pip install streamlit requests gtts playsound
+Provide COMPLETE main.py code ready to paste and run.

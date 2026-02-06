@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
@@ -11,8 +12,9 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, Volume2, RotateCcw } from "lucide-react";
-import type { Site, InsertSite } from "@shared/schema";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, Volume2, RotateCcw, Trophy, History as HistoryIcon } from "lucide-react";
+import type { Site, InsertSite, History } from "@shared/schema";
 
 export default function App() {
   const { toast } = useToast();
@@ -25,6 +27,7 @@ export default function App() {
   const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
   const { data: sites = [] } = useQuery<Site[]>({ queryKey: ["/api/sites"] });
+  const { data: historyList = [] } = useQuery<History[]>({ queryKey: ["/api/history"] });
 
   useEffect(() => {
     if (sites.length > 0 && selectedSiteIds.length === 0) {
@@ -61,22 +64,34 @@ export default function App() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/sites"] }),
   });
 
-  const speak = (text: string) => {
+  const addHistoryMutation = useMutation({
+    mutationFn: async (entry: any) => {
+      return apiRequest("POST", "/api/history", entry);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/history"] }),
+  });
+
+  const resetAllMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/sites/reset-turnover", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
+      setCalcResults([]);
+      toast({ title: "ล้างข้อมูลทั้งหมดเรียบร้อย" });
+    },
+  });
+
+  const speak = (text: string, options: { slow?: boolean } = {}) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices();
     const thaiVoice = voices.find(v => v.lang === 'th-TH' || v.lang.includes('th'));
     if (thaiVoice) utterance.voice = thaiVoice;
     utterance.lang = 'th-TH';
+    utterance.rate = options.slow ? 0.8 : 1.0;
     window.speechSynthesis.speak(utterance);
   };
-
-  useEffect(() => {
-    window.speechSynthesis.getVoices();
-    const handleVoicesChanged = () => window.speechSynthesis.getVoices();
-    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-  }, []);
 
   const calculateSplit = (withVoice = false) => {
     const rawUsdt = parseFloat(totalUsdtInput);
@@ -98,19 +113,20 @@ export default function App() {
     const targetCreditPerSite = netUsdt / sumInvR;
 
     const results = selectedSites.map((s, i) => {
-      const usdtUsed = targetCreditPerSite / R[i];
+      const depositedThb = (targetCreditPerSite / R[i]) * parseFloat(s.depositRate);
+      const totalCreditWithBonus = depositedThb * (1 + parseFloat(s.bonusPercent) / 100);
       return {
         id: s.id,
         name: s.name,
-        usdtUsed,
-        creditReceived: targetCreditPerSite,
-        totalTarget: targetCreditPerSite + parseFloat(s.existingBalance || "0")
+        depositedThb, // actual amount user must input/deposit
+        totalCreditWithBonus, // total_credits per site
+        totalTarget: totalCreditWithBonus + parseFloat(s.existingBalance || "0")
       };
     });
 
     setCalcResults(results);
 
-    const totalCredits = targetCreditPerSite * selectedSites.length;
+    const totalCredits = results.reduce((sum, res) => sum + res.totalCreditWithBonus, 0);
     const A = totalCredits / 2;
     const B = A * 0.95;
     const Y = A + B;
@@ -124,26 +140,14 @@ export default function App() {
     }
   };
 
-  const resetCalculation = () => {
-    setCalcResults([]);
-    setProfits({ min: 0, max: 0 });
-    toast({ title: "รีเซ็ตการคำนวณเรียบร้อย" });
-  };
-
   const saveTargets = async () => {
     for (const res of calcResults) {
       await updateSiteMutation.mutateAsync({
         id: res.id,
-        updates: { targetTurnover: res.totalTarget.toString(), currentTurnover: "0" }
+        updates: { targetTurnover: res.totalTarget.toString(), currentTurnover: "0", remainingBalance: "0" }
       });
     }
     toast({ title: "บันทึกเป้าหมายไปที่หน้า Tracker แล้ว" });
-  };
-
-  const toggleSiteSelection = (id: number) => {
-    setSelectedSiteIds(prev => 
-      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-    );
   };
 
   const updateBet = async (site: Site, betAmount: string) => {
@@ -152,7 +156,7 @@ export default function App() {
 
     const newCurrent = parseFloat(site.currentTurnover || "0") + bet;
     const target = parseFloat(site.targetTurnover || "0");
-    const remaining = target - newCurrent;
+    const remaining = Math.max(0, target - newCurrent);
 
     await updateSiteMutation.mutateAsync({
       id: site.id,
@@ -162,24 +166,62 @@ export default function App() {
     if (remaining > 0) {
       speak(`เหลือเทิร์นเว็บ ${site.name} ${Math.round(remaining)} บาท`);
     } else {
-      speak(`ครบเทิร์น ${site.name} แล้วจ้า!`);
+      speak(`ภารกิจสำเร็จเว็บ ${site.name}! เย้!!`);
     }
+  };
+
+  const confirmMissionComplete = async () => {
+    const completedSites = sites.filter(s => parseFloat(s.targetTurnover || "0") > 0 && parseFloat(s.currentTurnover || "0") >= parseFloat(s.targetTurnover || "0"));
+    const totalRemaining = completedSites.reduce((sum, s) => sum + parseFloat(s.remainingBalance || "0"), 0);
+    const finalProfit = totalRemaining - totalCapitalThb;
+
+    // Save to history
+    await addHistoryMutation.mutateAsync({
+      initialThb: totalCapitalThb.toString(),
+      totalUsdt: totalUsdtInput,
+      profit: finalProfit.toString(),
+      details: {
+        sites: completedSites.map(s => ({ name: s.name, balance: s.remainingBalance })),
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    // Announce
+    if (finalProfit < 0) {
+      speak("อุ๊ย... ขาดทุนนะคะ... สู้ใหม่รอบหน้าดีกว่า", { slow: true });
+    } else if (finalProfit <= 5000) {
+      speak("กำไรนิดหน่อย แต่ก็ดีใจจ้าาา เยี่ยมเลย!");
+    } else if (finalProfit <= 20000) {
+      speak("ว้าวว! กำไรดีมากเลยนะคะ เย้!!! สุดยอด!");
+    } else {
+      // High profit hype
+      speak("โคตรเกินนนน!!! กำไรมหาศาลเลยยยยย เย้ยยยยยยย!!!! ฉ่ำสุดๆ ไปเลยยยย สุดในจักรวาลดดดด!!!");
+      setTimeout(() => speak("เฮ!!! เฮ!!! เฮ!!!"), 5000);
+    }
+
+    toast({ title: "ภารกิจสำเร็จ!", description: `กำไรสุทธิ: ${finalProfit.toLocaleString()} บาท` });
   };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-8">
         <header className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Financial Simulator</h1>
-          <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })}>
-            <RefreshCcw className="h-4 w-4" />
-          </Button>
+          <h1 className="text-3xl font-bold tracking-tight">USDT Financial Mission</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })}>
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+            <Button variant="destructive" size="icon" onClick={() => resetAllMutation.mutate()}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
         </header>
 
         <Tabs defaultValue="calculator" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="calculator"><Calculator className="mr-2 h-4 w-4" /> Calculator</TabsTrigger>
             <TabsTrigger value="tracker"><TrendingUp className="mr-2 h-4 w-4" /> Tracker</TabsTrigger>
+            <TabsTrigger value="history"><HistoryIcon className="mr-2 h-4 w-4" /> History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="calculator" className="space-y-4">
@@ -192,17 +234,17 @@ export default function App() {
                   <p className="text-xs text-muted-foreground">≈ {totalCapitalThb.toLocaleString()} THB</p>
                 </div>
                 <div className="space-y-2">
-                  <Label>USDT Rate (Binance TH)</Label>
+                  <Label>Rate (USDT/THB)</Label>
                   <div className="flex gap-2">
                     <Input type="number" value={exchangeRate} onChange={e => setExchangeRate(e.target.value)} />
                     <Button onClick={() => fetchRateMutation.mutate()} disabled={fetchRateMutation.isPending}>Fetch</Button>
                   </div>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button className="flex-1" onClick={() => calculateSplit(true)} variant="primary">คำนวณ (มีเสียง)</Button>
+                  <Button className="flex-1" onClick={() => calculateSplit(true)} variant="primary">คำนวณ</Button>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button variant="outline" className="flex-1" onClick={resetCalculation}><RotateCcw className="mr-2 h-4 w-4" /> รีเซ็ต</Button>
+                  <Button variant="outline" className="flex-1" onClick={() => resetAllMutation.mutate()}>รีเซ็ต</Button>
                 </div>
               </CardContent>
             </Card>
@@ -230,42 +272,39 @@ export default function App() {
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    {sites.map(site => (
-                      <div key={site.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors" onClick={() => toggleSiteSelection(site.id)}>
-                        <Checkbox checked={selectedSiteIds.includes(site.id)} onCheckedChange={() => toggleSiteSelection(site.id)} />
-                        <div className="flex-1">
-                          <p className="font-semibold">{site.name}</p>
-                          <p className="text-xs text-muted-foreground">Rate: {site.depositRate} | Bonus: {site.bonusPercent}% | Bal: {site.existingBalance}</p>
-                        </div>
+                <CardContent className="space-y-2">
+                  {sites.map(site => (
+                    <div key={site.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors" onClick={() => setSelectedSiteIds(prev => prev.includes(site.id) ? prev.filter(id => id !== site.id) : [...prev, site.id])}>
+                      <Checkbox checked={selectedSiteIds.includes(site.id)} />
+                      <div className="flex-1">
+                        <p className="font-semibold">{site.name}</p>
+                        <p className="text-xs text-muted-foreground">Rate: {site.depositRate} | Bonus: {site.bonusPercent}%</p>
                       </div>
-                    ))}
-                    {sites.length === 0 && <p className="text-center text-muted-foreground py-4">ยังไม่มีรายชื่อเว็บ</p>}
-                  </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
 
               {calcResults.length > 0 && (
                 <Card className="border-primary/20 bg-primary/5">
-                  <CardHeader><CardTitle>ผลลัพธ์การคำนวณ</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>ผลลัพธ์ (ยอดที่ต้องโอน)</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       {calcResults.map(res => (
                         <div key={res.id} className="flex justify-between text-sm">
-                          <span>{res.name}: {res.usdtUsed.toFixed(2)} USDT</span>
-                          <span className="font-mono">{Math.round(res.creditReceived)} THB</span>
+                          <span>{res.name} (ยอดโอน):</span>
+                          <span className="font-bold text-primary">{Math.round(res.depositedThb).toLocaleString()} บาท</span>
                         </div>
                       ))}
                     </div>
                     <div className="pt-4 border-t space-y-2">
                       <div className="flex justify-between font-bold">
                         <span>กำไรขั้นต่ำคาดการณ์:</span>
-                        <span className={profits.min >= 0 ? "text-green-600" : "text-red-600"}>{Math.round(profits.min)} THB</span>
+                        <span className={profits.min >= 0 ? "text-green-600" : "text-red-600"}>{Math.round(profits.min).toLocaleString()} บาท</span>
                       </div>
                       <div className="flex justify-between font-bold">
                         <span>กำไรสูงสุดคาดการณ์:</span>
-                        <span className="text-green-600">{Math.round(profits.max)} THB</span>
+                        <span className="text-green-600">{Math.round(profits.max).toLocaleString()} บาท</span>
                       </div>
                     </div>
                     <Button className="w-full mt-4" onClick={saveTargets}>บันทึกเป้าหมายไปที่ Tracker</Button>
@@ -278,14 +317,50 @@ export default function App() {
           <TabsContent value="tracker" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {sites.filter(s => parseFloat(s.targetTurnover || "0") > 0).map(site => (
-                <TrackerCard key={site.id} site={site} onUpdate={updateBet} />
+                <TrackerCard key={site.id} site={site} onUpdate={updateBet} onBalanceUpdate={(id, bal) => updateSiteMutation.mutate({ id, updates: { remainingBalance: bal } })} />
               ))}
-              {sites.filter(s => parseFloat(s.targetTurnover || "0") > 0).length === 0 && (
-                <div className="col-span-full py-12 text-center text-muted-foreground">
-                  ยังไม่มีเป้าหมายในขณะนี้ กรุณาคำนวณและบันทึกข้อมูลจากหน้า Calculator
-                </div>
-              )}
             </div>
+            {sites.some(s => parseFloat(s.targetTurnover || "0") > 0 && parseFloat(s.currentTurnover || "0") >= parseFloat(s.targetTurnover || "0")) && (
+              <Button className="w-full h-16 text-xl font-bold" onClick={confirmMissionComplete} variant="success">
+                <Trophy className="mr-2 h-6 w-6" /> ยืนยันภารกิจสำเร็จ
+              </Button>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history">
+            <Card>
+              <CardHeader><CardTitle>ประวัติรอบการเล่น</CardTitle></CardHeader>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  {historyList.map((h, i) => (
+                    <AccordionItem key={h.id} value={`item-${i}`}>
+                      <AccordionTrigger>
+                        <div className="flex justify-between w-full pr-4">
+                          <span>{new Date(h.createdAt || '').toLocaleString()}</span>
+                          <span className={parseFloat(h.profit) >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+                            {parseFloat(h.profit).toLocaleString()} บาท
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                          <p>ทุนตั้งต้น: {parseFloat(h.initialThb).toLocaleString()} บาท ({h.totalUsdt} USDT)</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {(h.details as any).sites?.map((s: any, j: number) => (
+                              <div key={j} className="flex justify-between">
+                                <span>{s.name}:</span>
+                                <span>{parseFloat(s.balance).toLocaleString()} บาท</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+                {historyList.length === 0 && <p className="text-center py-8 text-muted-foreground">ไม่มีประวัติการเล่น</p>}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
@@ -305,36 +380,44 @@ function SiteForm({ onSubmit }: { onSubmit: (data: InsertSite) => void }) {
       <div className="space-y-2"><Label>อัตราแลก (THB/USDT)</Label><Input type="number" value={rate} onChange={e => setRate(e.target.value)} /></div>
       <div className="space-y-2"><Label>โบนัส %</Label><Input type="number" value={bonus} onChange={e => setBonus(e.target.value)} /></div>
       <div className="space-y-2"><Label>เครดิตที่มีอยู่เดิม (บาท)</Label><Input type="number" value={balance} onChange={e => setBalance(e.target.value)} /></div>
-      <Button className="w-full" onClick={() => {
-        if (!name) return;
-        onSubmit({ name, depositRate: rate, bonusPercent: bonus, existingBalance: balance });
-        setName("");
-      }}>เพิ่มรายชื่อเว็บ</Button>
+      <Button className="w-full" onClick={() => { if (!name) return; onSubmit({ name, depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); }}>เพิ่มรายชื่อเว็บ</Button>
     </div>
   );
 }
 
-function TrackerCard({ site, onUpdate }: { site: Site, onUpdate: (site: Site, amount: string) => void }) {
+function TrackerCard({ site, onUpdate, onBalanceUpdate }: { site: Site, onUpdate: (site: Site, amount: string) => void, onBalanceUpdate: (id: number, bal: string) => void }) {
   const [bet, setBet] = useState("");
   const current = parseFloat(site.currentTurnover || "0");
   const target = parseFloat(site.targetTurnover || "0");
   const progress = target > 0 ? Math.min((current / target) * 100, 100) : 0;
+  const isComplete = current >= target;
 
   return (
-    <Card className={progress >= 100 ? "border-green-500 bg-green-50/10" : ""}>
+    <Card className={isComplete ? "border-green-500 bg-green-50/10" : ""}>
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-lg">{site.name}</CardTitle>
-        <Volume2 className="h-4 w-4 text-muted-foreground" />
+        {isComplete && <Trophy className="h-5 w-5 text-green-600" />}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1">
           <div className="flex justify-between text-xs"><span>ความคืบหน้า</span><span>{Math.round(current)} / {Math.round(target)} บาท</span></div>
           <Progress value={progress} />
+          <p className="text-[10px] text-muted-foreground">เหลือ: {Math.max(0, Math.round(target - current))} บาท</p>
         </div>
-        <div className="flex gap-2">
-          <Input type="number" placeholder="ยอดเดิมพัน" value={bet} onChange={e => setBet(e.target.value)} />
-          <Button onClick={() => { onUpdate(site, bet); setBet(""); }}>อัปเดต</Button>
-        </div>
+        {isComplete ? (
+          <div className="space-y-2">
+            <p className="text-sm font-bold text-green-600 text-center">ครบเทิร์นแล้ว!</p>
+            <div className="space-y-1">
+              <Label className="text-xs">ยอดเงินคงเหลือหลังเล่น</Label>
+              <Input type="number" placeholder="ยอดเงินสุทธิ" value={site.remainingBalance || ""} onChange={e => onBalanceUpdate(site.id, e.target.value)} />
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input type="number" placeholder="ยอดเดิมพัน" value={bet} onChange={e => setBet(e.target.value)} />
+            <Button onClick={() => { onUpdate(site, bet); setBet(""); }}>อัปเดต</Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
