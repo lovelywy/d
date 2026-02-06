@@ -100,6 +100,22 @@ export async function registerRoutes(
     res.json({ message: "All turnovers reset" });
   });
 
+  // === HISTORY ===
+  app.get(api.history.list.path, async (_req, res) => {
+    const history = await storage.getHistory();
+    res.json(history);
+  });
+
+  app.post(api.history.create.path, async (req, res) => {
+    try {
+      const input = api.history.create.input.parse(req.body);
+      const entry = await storage.createHistory(input);
+      res.status(201).json(entry);
+    } catch (err) {
+      res.status(400).json({ message: "Invalid history data" });
+    }
+  });
+
   // === SEED DATA ===
   const existingSites = await storage.getSites();
   if (existingSites.length === 0) {

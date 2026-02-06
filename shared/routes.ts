@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { insertSiteSchema, sites } from './schema';
+import { insertSiteSchema, sites, history, insertHistorySchema } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -74,6 +74,23 @@ export const api = {
       },
     }
   },
+  history: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/history',
+      responses: {
+        200: z.array(z.custom<typeof history.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/history',
+      input: insertHistorySchema,
+      responses: {
+        201: z.custom<typeof history.$inferSelect>(),
+      },
+    }
+  }
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

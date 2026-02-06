@@ -2,9 +2,12 @@
 import { db } from "./db";
 import {
   sites,
+  history,
   type Site,
   type InsertSite,
-  type UpdateSiteRequest
+  type UpdateSiteRequest,
+  type History,
+  type InsertHistory
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -15,6 +18,9 @@ export interface IStorage {
   updateSite(id: number, updates: UpdateSiteRequest): Promise<Site>;
   deleteSite(id: number): Promise<void>;
   resetAllTurnover(): Promise<void>;
+  // History
+  getHistory(): Promise<History[]>;
+  createHistory(entry: InsertHistory): Promise<History>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -46,7 +52,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async resetAllTurnover(): Promise<void> {
-    await db.update(sites).set({ currentTurnover: '0' });
+    await db.update(sites).set({ 
+      currentTurnover: '0',
+      targetTurnover: '0',
+      remainingBalance: '0'
+    });
+  }
+
+  async getHistory(): Promise<History[]> {
+    return await db.select().from(history).orderBy(history.createdAt);
+  }
+
+  async createHistory(entry: InsertHistory): Promise<History> {
+    const [record] = await db.insert(history).values(entry).returning();
+    return record;
   }
 }
 
