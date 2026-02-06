@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 
 export default function App() {
@@ -40,11 +40,6 @@ export default function App() {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    if (sites.length > 0 && selectedSiteIds.length === 0) {
-      setSelectedSiteIds(sites.slice(0, 5).map(s => s.id));
-    }
-  }, [sites]);
 
   const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
@@ -340,38 +335,52 @@ export default function App() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {sites.length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-4">ยังไม่มีเว็บ กดปุ่ม "จัดการเว็บ" เพื่อเพิ่มเว็บ</p>
+                  {selectedSiteIds.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-4">กดปุ่ม + เพื่อเพิ่มเว็บ</p>
                   ) : (
                     <div className="space-y-2">
-                      {sites.map(site => {
-                        const isSelected = selectedSiteIds.includes(site.id);
-                        const atMax = selectedSiteIds.length >= 5 && !isSelected;
+                      {selectedSiteIds.map((siteId, rowIndex) => {
+                        const usedIds = selectedSiteIds.filter((_, i) => i !== rowIndex);
+                        const availableSites = sites.filter(s => !usedIds.includes(s.id));
+                        const currentSite = sites.find(s => s.id === siteId);
                         return (
-                          <label
-                            key={site.id}
-                            className={`flex items-center gap-3 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                              isSelected ? "border-primary/40 bg-primary/5" : "border-border/50"
-                            } ${atMax ? "opacity-40 cursor-not-allowed" : "hover-elevate"}`}
-                            data-testid={`checkbox-site-${site.id}`}
-                          >
-                            <Checkbox
-                              checked={isSelected}
-                              disabled={atMax}
-                              onCheckedChange={(checked) => {
-                                if (checked === true) {
-                                  setSelectedSiteIds(prev => [...prev, site.id]);
-                                } else {
-                                  setSelectedSiteIds(prev => prev.filter(id => id !== site.id));
-                                }
-                              }}
-                              data-testid={`input-checkbox-${site.id}`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm font-medium">{site.name}</span>
-                              <span className="text-xs text-muted-foreground ml-2">Rate: {site.depositRate} | Bonus: {site.bonusPercent}%</span>
+                          <div key={rowIndex} className="flex items-center gap-2" data-testid={`row-site-${rowIndex}`}>
+                            <span className="text-sm font-bold text-muted-foreground w-6 text-center shrink-0">{rowIndex + 1}.</span>
+                            <div className="flex-1">
+                              <Select
+                                value={String(siteId)}
+                                onValueChange={val => {
+                                  setSelectedSiteIds(prev => {
+                                    const next = [...prev];
+                                    next[rowIndex] = parseInt(val);
+                                    return next;
+                                  });
+                                }}
+                              >
+                                <SelectTrigger data-testid={`select-site-${rowIndex}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableSites.map(site => (
+                                    <SelectItem key={site.id} value={String(site.id)} data-testid={`option-site-${rowIndex}-${site.id}`}>
+                                      {site.name} <span className="text-muted-foreground ml-1">(Rate: {site.depositRate} | Bonus: {site.bonusPercent}%)</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
-                          </label>
+                            {currentSite && (
+                              <span className="text-xs text-muted-foreground hidden sm:block shrink-0">R:{currentSite.depositRate}</span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setSelectedSiteIds(prev => prev.filter((_, i) => i !== rowIndex))}
+                              data-testid={`button-remove-row-${rowIndex}`}
+                            >
+                              <Minus className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         );
                       })}
                     </div>
@@ -382,10 +391,20 @@ export default function App() {
                       {selectedSiteIds.length} / 5 เว็บ
                       {selectedSiteIds.length >= 5 && <span className="text-primary ml-1">(เต็มแล้ว)</span>}
                     </p>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedSiteIds(sites.slice(0, 5).map(s => s.id))} data-testid="button-select-all">เลือกทั้งหมด</Button>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedSiteIds([])} data-testid="button-deselect-all">ล้าง</Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={selectedSiteIds.length >= 5 || sites.filter(s => !selectedSiteIds.includes(s.id)).length === 0}
+                      onClick={() => {
+                        const available = sites.filter(s => !selectedSiteIds.includes(s.id));
+                        if (available.length > 0) {
+                          setSelectedSiteIds(prev => [...prev, available[0].id]);
+                        }
+                      }}
+                      data-testid="button-add-row"
+                    >
+                      <Plus className="mr-1 h-4 w-4" /> เพิ่มเว็บ
+                    </Button>
                   </div>
 
                   {savedConfigs.length > 0 && (
