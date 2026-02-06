@@ -13,7 +13,7 @@ export const sites = pgTable("sites", {
   targetTurnover: numeric("target_turnover").default('0'),
   currentTurnover: numeric("current_turnover").default('0'),
   existingBalance: numeric("existing_balance").default('0'),
-  remainingBalance: numeric("remaining_balance").default('0'), // ยอดเงินคงเหลือหลังเล่น
+  remainingBalance: numeric("remaining_balance"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -42,11 +42,7 @@ export const insertHistorySchema = createInsertSchema(history).omit({
 
 export type Site = typeof sites.$inferSelect;
 export type InsertSite = z.infer<typeof insertSiteSchema>;
+export type UpdateSiteRequest = Partial<InsertSite> & { remainingBalance?: string | null };
 
 export type History = typeof history.$inferSelect;
 export type InsertHistory = z.infer<typeof insertHistorySchema>;
-
-export interface BinancePriceResponse {
-  symbol: string;
-  price: string;
-}

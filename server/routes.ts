@@ -10,7 +10,13 @@ import https from "https";
 function fetchCoinGeckoPrice(): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = "https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=thb";
-    https.get(url, (res) => {
+    const options = {
+      headers: {
+        'User-Agent': 'USDT-Mission-App/1.0',
+        'Accept': 'application/json'
+      }
+    };
+    https.get(url, options, (res) => {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => {
@@ -19,6 +25,7 @@ function fetchCoinGeckoPrice(): Promise<string> {
           if (json.tether && json.tether.thb) {
             resolve(json.tether.thb.toString());
           } else {
+            console.log("CoinGecko raw response:", data);
             reject(new Error("Invalid response from CoinGecko"));
           }
         } catch (e) {
