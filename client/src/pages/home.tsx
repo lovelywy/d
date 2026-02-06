@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, TrendingUp, RefreshCcw, Plus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 
@@ -21,7 +21,8 @@ export default function App() {
   const [exchangeRate, setExchangeRate] = useState<string>("35.5");
   const [calcResults, setCalcResults] = useState<any[]>([]);
   const [profits, setProfits] = useState({ min: 0, max: 0 });
-  const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [siteSlots, setSiteSlots] = useState<(number | null)[]>([null, null, null, null, null]);
+  const selectedSiteIds = siteSlots.filter((id): id is number => id !== null);
   const [activeTab, setActiveTab] = useState("calculator");
   const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean } | null>(null);
 
@@ -32,7 +33,9 @@ export default function App() {
 
   useEffect(() => {
     if (sites.length > 0 && selectedSiteIds.length === 0) {
-      setSelectedSiteIds(sites.map(s => s.id));
+      const initial: (number | null)[] = [null, null, null, null, null];
+      sites.slice(0, 5).forEach((s, i) => { initial[i] = s.id; });
+      setSiteSlots(initial);
     }
   }, [sites]);
 
@@ -307,7 +310,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
-                  <CardTitle>เลือกเว็บที่จะใช้</CardTitle>
+                  <CardTitle>รายชื่อเว็บสำหรับใช้ทำกำไร</CardTitle>
                   <Dialog>
                     <DialogTrigger asChild><Button size="sm" data-testid="button-manage-sites"><Plus className="mr-2 h-4 w-4" /> จัดการเว็บ</Button></DialogTrigger>
                     <DialogContent>
@@ -327,16 +330,55 @@ export default function App() {
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  {sites.map(site => (
-                    <div key={site.id} className="flex items-center space-x-3 p-3 border rounded-md hover-elevate cursor-pointer transition-colors" onClick={() => setSelectedSiteIds(prev => prev.includes(site.id) ? prev.filter(id => id !== site.id) : [...prev, site.id])} data-testid={`checkbox-site-${site.id}`}>
-                      <Checkbox checked={selectedSiteIds.includes(site.id)} />
-                      <div className="flex-1">
-                        <p className="font-semibold">{site.name}</p>
-                        <p className="text-xs text-muted-foreground">Rate: {site.depositRate} | Bonus: {site.bonusPercent}%</p>
+                <CardContent className="space-y-3">
+                  {siteSlots.map((slotId, slotIndex) => {
+                    const selectedSite = slotId ? sites.find(s => s.id === slotId) : null;
+                    const usedIds = siteSlots.filter((id, i) => i !== slotIndex && id !== null) as number[];
+                    const availableSites = sites.filter(s => !usedIds.includes(s.id));
+                    return (
+                      <div key={slotIndex} className="flex items-center gap-3" data-testid={`slot-site-${slotIndex}`}>
+                        <span className="text-sm font-bold text-muted-foreground w-6 text-center">{slotIndex + 1}.</span>
+                        <div className="flex-1">
+                          <Select
+                            value={slotId ? String(slotId) : ""}
+                            onValueChange={val => {
+                              setSiteSlots(prev => {
+                                const next = [...prev];
+                                if (val === "__clear__") {
+                                  next[slotIndex] = null;
+                                } else {
+                                  next[slotIndex] = parseInt(val);
+                                }
+                                return next;
+                              });
+                            }}
+                          >
+                            <SelectTrigger data-testid={`select-site-${slotIndex}`}>
+                              <SelectValue placeholder="-- เลือกเว็บ --" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {slotId && (
+                                <SelectItem value="__clear__" data-testid={`option-clear-${slotIndex}`}>
+                                  <span className="text-muted-foreground">-- ยกเลิกเลือก --</span>
+                                </SelectItem>
+                              )}
+                              {availableSites.map(site => (
+                                <SelectItem key={site.id} value={String(site.id)} data-testid={`option-site-${slotIndex}-${site.id}`}>
+                                  {site.name} <span className="text-muted-foreground ml-1">(Rate: {site.depositRate} | Bonus: {site.bonusPercent}%)</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {selectedSite && (
+                          <div className="text-xs text-muted-foreground hidden sm:block">
+                            <span>Rate: {selectedSite.depositRate}</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                  <p className="text-xs text-muted-foreground text-center pt-1">เลือกเว็บ {selectedSiteIds.length} / 5 เว็บ</p>
                 </CardContent>
               </Card>
 
