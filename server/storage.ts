@@ -55,7 +55,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(sites).set({ 
       currentTurnover: '0',
       targetTurnover: '0',
-      remainingBalance: '0'
+      remainingBalance: null
     });
   }
 
