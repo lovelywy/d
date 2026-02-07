@@ -292,7 +292,10 @@ export default function App() {
         <header className="flex flex-wrap justify-between items-center gap-2 py-2">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
-            <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-copyright">เผยแพร่&reg; ลิขสิทธิ์ โดย &copy; นิวัฒน์ รักสนิท | Published&reg; Copyright by &copy; Niwat Raksanit</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight" data-testid="text-copyright">
+              เผยแพร่&reg; ลิขสิทธิ์ โดย &copy; นิวัฒน์ รักสนิท<br />
+              Published&reg; Copyright by &copy; Niwat Raksanit
+            </p>
           </div>
           <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
             <RefreshCcw className="h-4 w-4" />
