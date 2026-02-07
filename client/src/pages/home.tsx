@@ -199,7 +199,8 @@ export default function App() {
     setProfits({ min: minProfitValue, max: maxProfitValue });
 
     if (withVoice) {
-      speak(`คำนวณเรียบร้อยแล้วค่ะ กำไรขั้นต่ำประมาณ ${Math.round(minProfitValue)} บาท และกำไรสูงสุดประมาณ ${Math.round(maxProfitValue)} บาท`);
+      const numSites = selectedSites.length;
+      speak(`น้องวาวา คำนวณให้เลยนะ ทุนรวมก่อนแลกทั้งหมด ${Math.round(totalCapitalThb)} บาท ฝาก ${numSites} เว็บ กำไรอย่างน้อยต้องได้ ${Math.round(minProfitValue)} บาท สูงสุดอาจจะถึง ${Math.round(maxProfitValue)} บาทเลยค่ะ`);
     }
   };
 
