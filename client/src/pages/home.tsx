@@ -200,7 +200,7 @@ export default function App() {
 
     if (withVoice) {
       const numSites = selectedSites.length;
-      speak(`น้องวาวา คำนวณให้เลยนะ ทุนรวมก่อนแลกทั้งหมด ${Math.round(totalCapitalThb)} บาท ฝาก ${numSites} เว็บ กำไรอย่างน้อยต้องได้ ${Math.round(minProfitValue)} บาท สูงสุดอาจจะถึง ${Math.round(maxProfitValue)} บาทเลยค่ะ`);
+      speak(`วาวาคิดให้นะ ฝาก ${numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(minProfitValue)} บาท สูงสุดอาจจะได้ถึง ${Math.round(maxProfitValue)} บาท เลยนะคะ`);
     }
   };
 
@@ -291,7 +291,7 @@ export default function App() {
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex flex-wrap justify-between items-center gap-2 py-2">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight gold-text" data-testid="text-app-title">USDT Financial Mission</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
             <p className="text-xs text-muted-foreground mt-1">Arbitrage Profit System</p>
           </div>
           <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
