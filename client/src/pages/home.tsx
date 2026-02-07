@@ -17,11 +17,17 @@ import type { Site, InsertSite, History } from "@shared/schema";
 
 export default function App() {
   const { toast } = useToast();
-  const [totalUsdtInput, setTotalUsdtInput] = useState<string>("300");
-  const [exchangeRate, setExchangeRate] = useState<string>("35.5");
+  const [totalUsdtInput, setTotalUsdtInput] = useState<string>(() => {
+    try { return localStorage.getItem("last-usdt") || "300"; } catch { return "300"; }
+  });
+  const [exchangeRate, setExchangeRate] = useState<string>(() => {
+    try { return localStorage.getItem("last-rate") || "35.5"; } catch { return "35.5"; }
+  });
   const [calcResults, setCalcResults] = useState<any[]>([]);
   const [profits, setProfits] = useState({ min: 0, max: 0 });
-  const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>([]);
+  const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>(() => {
+    try { const s = localStorage.getItem("last-sites"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
   const [activeTab, setActiveTab] = useState("calculator");
   const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean } | null>(null);
   const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
@@ -39,6 +45,17 @@ export default function App() {
       if (stored) setSavedConfigs(JSON.parse(stored));
     } catch {}
   }, []);
+
+  useEffect(() => { try { localStorage.setItem("last-usdt", totalUsdtInput); } catch {} }, [totalUsdtInput]);
+  useEffect(() => { try { localStorage.setItem("last-rate", exchangeRate); } catch {} }, [exchangeRate]);
+  useEffect(() => { try { localStorage.setItem("last-sites", JSON.stringify(selectedSiteIds)); } catch {} }, [selectedSiteIds]);
+
+  useEffect(() => {
+    if (sites.length > 0 && selectedSiteIds.length > 0) {
+      const valid = selectedSiteIds.filter(id => sites.some(s => s.id === id));
+      if (valid.length !== selectedSiteIds.length) setSelectedSiteIds(valid);
+    }
+  }, [sites]);
 
 
   const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
