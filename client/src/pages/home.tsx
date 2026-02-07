@@ -619,6 +619,11 @@ export default function App() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <footer className="text-center py-6 space-y-1 border-t border-border/30 mt-8">
+          <p className="text-xs text-muted-foreground" data-testid="text-credit-creative">Creative by Studio Billy Here is Melody</p>
+          <p className="text-xs text-muted-foreground" data-testid="text-credit-director">Director and Producer Published by Niwat Raksanit</p>
+        </footer>
       </div>
     </div>
   );
