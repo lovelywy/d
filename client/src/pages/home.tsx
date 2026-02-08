@@ -17,11 +17,19 @@ import type { Site, InsertSite, History } from "@shared/schema";
 import jun88Logo from "@assets/1770526630864_1770526755572.jpg";
 import dk7Logo from "@assets/1770526630940_1770526769658.jpg";
 import jdbaaLogo from "@assets/1770526630974_1770526769672.jpg";
+import ubet89Logo from "@assets/images_(18)_1770527346994.jpeg";
+import mvp999Logo from "@assets/images_(15)_1770527347009.jpeg";
+import sbfLogo from "@assets/images_(14)_1770527347021.jpeg";
+import huc99Logo from "@assets/images_(11)_1770527347032.jpeg";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
   "dk7": dk7Logo,
   "jdbaa": jdbaaLogo,
+  "ubet89": ubet89Logo,
+  "mvp999": mvp999Logo,
+  "sbf": sbfLogo,
+  "huc99": huc99Logo,
 };
 
 function getSiteLogo(name: string): string | null {
