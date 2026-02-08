@@ -14,6 +14,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
+import jun88Logo from "@assets/1770526630864_1770526755572.jpg";
+import dk7Logo from "@assets/1770526630940_1770526769658.jpg";
+import jdbaaLogo from "@assets/1770526630974_1770526769672.jpg";
+
+const SITE_LOGOS: Record<string, string> = {
+  "jun88": jun88Logo,
+  "dk7": dk7Logo,
+  "jdbaa": jdbaaLogo,
+};
+
+function getSiteLogo(name: string): string | null {
+  const key = name.toLowerCase().replace(/\s+/g, "");
+  for (const [k, v] of Object.entries(SITE_LOGOS)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return null;
+}
+
+function SiteLogo({ name, className = "h-6 w-auto" }: { name: string; className?: string }) {
+  const logo = getSiteLogo(name);
+  if (!logo) return null;
+  return <img src={logo} alt={name} className={`${className} rounded-sm object-contain`} />;
+}
 
 export default function App() {
   const { toast } = useToast();
@@ -384,7 +407,11 @@ export default function App() {
                                 <SelectContent>
                                   {availableSites.map(site => (
                                     <SelectItem key={site.id} value={String(site.id)} data-testid={`option-site-${rowIndex}-${site.id}`}>
-                                      {site.name} <span className="text-muted-foreground ml-1">(Rate: {site.depositRate} | Bonus: {site.bonusPercent}%)</span>
+                                      <span className="flex items-center gap-2">
+                                        <SiteLogo name={site.name} className="h-5 w-auto max-w-[60px]" />
+                                        <span>{site.name}</span>
+                                        <span className="text-muted-foreground text-[10px]">(R:{site.depositRate} B:{site.bonusPercent}%)</span>
+                                      </span>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -501,7 +528,7 @@ export default function App() {
                     <div className="space-y-2">
                       {calcResults.map(res => (
                         <div key={res.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0" data-testid={`result-site-${res.id}`}>
-                          <span className="font-medium">{res.name}</span>
+                          <span className="font-medium flex items-center gap-2"><SiteLogo name={res.name} className="h-6 w-auto max-w-[70px]" />{res.name}</span>
                           <div className="flex gap-4">
                             <div className="text-right">
                               <p className="text-[10px] text-muted-foreground">ยอดฝากเงินบาท</p>
@@ -565,8 +592,8 @@ export default function App() {
                   </div>
                   <div className="space-y-1 text-sm">
                     {trackerSites.map(s => (
-                      <div key={s.id} className="flex flex-wrap justify-between gap-1">
-                        <span>{s.name}:</span>
+                      <div key={s.id} className="flex flex-wrap justify-between items-center gap-1">
+                        <span className="flex items-center gap-1.5"><SiteLogo name={s.name} className="h-4 w-auto max-w-[50px]" />{s.name}:</span>
                         <span className={hasBalance(s) ? "font-bold text-green-600" : "text-muted-foreground"}>
                           {hasBalance(s) ? `${parseFloat(s.remainingBalance || "0").toLocaleString()} บาท` : "ยังไม่ได้ป้อน"}
                         </span>
@@ -911,7 +938,10 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
   return (
     <Card className={isComplete ? "border-emerald-500/30 gold-glow" : ""} data-testid={`card-tracker-${site.id}`}>
       <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-lg">{site.name}</CardTitle>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <SiteLogo name={site.name} className="h-8 w-auto max-w-[80px]" />
+          {site.name}
+        </CardTitle>
         {isComplete && <Trophy className="h-5 w-5 text-amber-400" />}
       </CardHeader>
       <CardContent className="space-y-4">
