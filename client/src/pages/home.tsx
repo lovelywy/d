@@ -16,7 +16,7 @@ import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Tro
 import type { Site, InsertSite, History } from "@shared/schema";
 import jun88Logo from "@assets/1770526630864_1770526755572.jpg";
 import dk7Logo from "@assets/1770526630940_1770526769658.jpg";
-import jdbaaLogo from "@assets/images_(22)_1770538479319.jpeg";
+import jdbaaLogo from "@assets/Screenshot_20260208_151738_1770538716395.jpg";
 import ubet89Logo from "@assets/images_(18)_1770527346994.jpeg";
 import mvp999Logo from "@assets/images_(15)_1770527347009.jpeg";
 import sbfLogo from "@assets/images_(14)_1770527347021.jpeg";
