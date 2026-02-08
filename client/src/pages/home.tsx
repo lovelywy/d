@@ -16,13 +16,13 @@ import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Tro
 import type { Site, InsertSite, History } from "@shared/schema";
 import jun88Logo from "@assets/1770526630864_1770526755572.jpg";
 import dk7Logo from "@assets/1770526630940_1770526769658.jpg";
-import jdbaaLogo from "@assets/1770526630974_1770526769672.jpg";
+import jdbaaLogo from "@assets/images_(22)_1770538479319.jpeg";
 import ubet89Logo from "@assets/images_(18)_1770527346994.jpeg";
 import mvp999Logo from "@assets/images_(15)_1770527347009.jpeg";
 import sbfLogo from "@assets/images_(14)_1770527347021.jpeg";
-import huc99Logo from "@assets/images_(11)_1770527347032.jpeg";
-import henghengLogo from "@assets/images_(20)_1770527670698.jpeg";
-import pay69Logo from "@assets/images_(19)_1770527670716.jpeg";
+import huc99Logo from "@assets/images_(11)_1770538479369.jpeg";
+import henghengLogo from "@assets/images_(21)_1770538479358.jpeg";
+import pay69Logo from "@assets/Picture.1_1770538479344.webp";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
