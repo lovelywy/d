@@ -21,6 +21,8 @@ import ubet89Logo from "@assets/images_(18)_1770527346994.jpeg";
 import mvp999Logo from "@assets/images_(15)_1770527347009.jpeg";
 import sbfLogo from "@assets/images_(14)_1770527347021.jpeg";
 import huc99Logo from "@assets/images_(11)_1770527347032.jpeg";
+import henghengLogo from "@assets/images_(20)_1770527670698.jpeg";
+import pay69Logo from "@assets/images_(19)_1770527670716.jpeg";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -30,6 +32,9 @@ const SITE_LOGOS: Record<string, string> = {
   "mvp999": mvp999Logo,
   "sbf": sbfLogo,
   "huc99": huc99Logo,
+  "เฮงเฮง": henghengLogo,
+  "hengheng": henghengLogo,
+  "pay69": pay69Logo,
 };
 
 function getSiteLogo(name: string): string | null {
