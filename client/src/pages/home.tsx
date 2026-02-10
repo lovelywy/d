@@ -372,9 +372,12 @@ export default function App() {
               Published&reg; Copyright by &copy; Niwat Raksanit
             </p>
           </div>
-          <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
-            <RefreshCcw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+            <img src="/dollcara-logo.png" alt="Dollcara" className="h-14 w-14 md:h-16 md:w-16 object-contain" data-testid="img-logo" />
+          </div>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
