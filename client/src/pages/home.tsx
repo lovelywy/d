@@ -376,7 +376,9 @@ export default function App() {
             <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
               <RefreshCcw className="h-4 w-4" />
             </Button>
-            <img src="/dollcara-logo.png" alt="Dollcara" className="h-14 w-14 md:h-16 md:w-16 object-contain" data-testid="img-logo" />
+            <div className="h-20 w-20 md:h-24 md:w-24 overflow-hidden" data-testid="img-logo">
+              <img src="/dollcara-logo.png" alt="Dollcara" className="w-full h-auto object-contain" style={{ marginBottom: '-15%' }} />
+            </div>
           </div>
         </header>
 
