@@ -794,6 +794,15 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
     >
       {stage === 'animation' && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <video
+            src="/calc-bg.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: 0.08, filter: 'sepia(1) hue-rotate(10deg) saturate(2) brightness(0.8)' }}
+          />
           {particles.map(p => (
             <div
               key={p.id}
