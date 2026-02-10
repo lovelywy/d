@@ -15,20 +15,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 import jun88Logo from "@assets/1770526630864_1770526755572.jpg";
-import dk7Logo from "@assets/1770526630940_1770526769658.jpg";
+import dk7Logo from "@assets/logo20220909053526986_1770746907226.png";
 import jdbaaLogo from "@assets/Screenshot_20260208_151738_1770538716395.jpg";
-import ubet89Logo from "@assets/images_(18)_1770527346994.jpeg";
-import mvp999Logo from "@assets/images_(15)_1770527347009.jpeg";
-import sbfLogo from "@assets/images_(14)_1770527347021.jpeg";
-import huc99Logo from "@assets/images_(11)_1770538479369.jpeg";
+import ubet89Logo from "@assets/AnyConv.com__Ubet89_แนวนอน_1770746850193.webp";
+import mvp999Logo from "@assets/MVP999-6-1_1770746907268.webp";
+import sbfLogo from "@assets/Picture.3_(8)_1770746907279.webp";
+import huc99Logo from "@assets/Picture.3_(6)_1770746907246.webp";
 import henghengLogo from "@assets/images_(21)_1770538479358.jpeg";
-import pay69Logo from "@assets/Picture.1_1770538479344.webp";
+import pay69Logo from "@assets/Picture.3_(7)_1770746907235.webp";
 import h25Logo from "@assets/202601020247582246723_1770742305009.webp";
-import logo239Logo from "@assets/app-icon_1770742305037.png";
-import logo2066Logo from "@assets/202510120357159802355_1770742305051.png";
-import z16Logo from "@assets/202512010252497383049_1770742305066.gif";
-import ysl99Logo from "@assets/logo_(1)_1770742305078.png";
-import kc9Logo from "@assets/logo20250513054304358_1770742305088.png";
+import logo239Logo from "@assets/logo20250509140551519_1770746907215.png";
+import logo2066Logo from "@assets/202510120357159802355_(1)_1770746907189.png";
+import z16Logo from "@assets/202512010252497383049_(1)_1770746907204.gif";
+import ysl99Logo from "@assets/logo_(2)_1770746907176.png";
+import kc9Logo from "@assets/logo20250513054304358_(1)_1770746907160.png";
+import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
+import m98Logo from "@assets/l20220608030750449_1770746907302.png";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -47,6 +49,8 @@ const SITE_LOGOS: Record<string, string> = {
   "z16": z16Logo,
   "ysl99": ysl99Logo,
   "kc9": kc9Logo,
+  "y568": y568Logo,
+  "m98": m98Logo,
 };
 
 function getSiteLogo(name: string): string | null {
