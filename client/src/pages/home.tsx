@@ -85,7 +85,7 @@ export default function App() {
   const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
   const [configName, setConfigName] = useState("");
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
-  const [calcAnimation, setCalcAnimation] = useState<{ show: boolean; sites: string[]; results: any[] | null; profits: { min: number; max: number } | null } | null>(null);
+  const [calcAnimation, setCalcAnimation] = useState<{ show: boolean; sites: string[]; results: any[] | null; profits: { min: number; max: number } | null; numSites: number } | null>(null);
 
   const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
@@ -253,18 +253,13 @@ export default function App() {
         sites: selectedSites.map(s => s.name),
         results,
         profits: { min: minProfitValue, max: maxProfitValue },
+        numSites: selectedSites.length,
       });
 
       setTimeout(() => {
         setCalcResults(results);
         setProfits({ min: minProfitValue, max: maxProfitValue });
       }, 3200);
-
-      setTimeout(() => {
-        setCalcAnimation(null);
-        const numSites = selectedSites.length;
-        speak(`วาวาคิดให้นะ ฝาก ${numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(minProfitValue)} บาท สูงสุดอาจจะได้ถึง ${Math.round(maxProfitValue)} บาท เลยนะคะ`);
-      }, 4000);
     } else {
       setCalcResults(results);
       setProfits({ min: minProfitValue, max: maxProfitValue });
@@ -359,6 +354,13 @@ export default function App() {
           siteNames={calcAnimation.sites}
           results={calcAnimation.results}
           profits={calcAnimation.profits}
+          onDismiss={() => {
+            const anim = calcAnimation;
+            setCalcAnimation(null);
+            if (anim?.profits) {
+              speak(`วาวาคิดให้นะ ฝาก ${anim.numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(anim.profits.min)} บาท สูงสุดอาจจะได้ถึง ${Math.round(anim.profits.max)} บาท เลยนะคะ`);
+            }
+          }}
         />
       )}
 
@@ -710,15 +712,20 @@ export default function App() {
   );
 }
 
-function CalcAnimationOverlay({ siteNames, results, profits }: {
+function CalcAnimationOverlay({ siteNames, results, profits, onDismiss }: {
   siteNames: string[];
   results: any[] | null;
   profits: { min: number; max: number } | null;
+  onDismiss: () => void;
 }) {
   const [phase, setPhase] = useState(0);
   const [opacity, setOpacity] = useState(0);
   const [rollingNumbers, setRollingNumbers] = useState<number[]>([]);
   const [revealedSites, setRevealedSites] = useState<number>(0);
+  const [showVideo, setShowVideo] = useState(false);
+  const [canDismiss, setCanDismiss] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setOpacity(1);
@@ -728,12 +735,16 @@ function CalcAnimationOverlay({ siteNames, results, profits }: {
 
     const t1 = setTimeout(() => setPhase(1), 400);
     const t2 = setTimeout(() => setPhase(2), 1200);
-    const t3 = setTimeout(() => setPhase(3), 2400);
-    const t4 = setTimeout(() => {
+    const t3 = setTimeout(() => {
+      setPhase(3);
       clearInterval(rollInterval);
-      setPhase(4);
+    }, 2400);
+    const t4 = setTimeout(() => {
+      setShowVideo(true);
     }, 3200);
-    const t5 = setTimeout(() => setOpacity(0), 3600);
+    const t5 = setTimeout(() => {
+      setCanDismiss(true);
+    }, 9200);
 
     const siteTimers: ReturnType<typeof setTimeout>[] = [];
     siteNames.forEach((_, i) => {
@@ -746,6 +757,13 @@ function CalcAnimationOverlay({ siteNames, results, profits }: {
     };
   }, [siteNames]);
 
+  const handleDismiss = useCallback(() => {
+    if (!canDismiss || dismissing) return;
+    setDismissing(true);
+    setOpacity(0);
+    setTimeout(() => onDismiss(), 500);
+  }, [canDismiss, dismissing, onDismiss]);
+
   const particles = Array.from({ length: 40 }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
@@ -757,13 +775,14 @@ function CalcAnimationOverlay({ siteNames, results, profits }: {
 
   return (
     <div
-      className="fixed inset-0 z-[9998] flex items-center justify-center"
+      className="fixed inset-0 z-[9998] flex items-center justify-center overflow-y-auto"
       style={{
         background: 'radial-gradient(ellipse at center, rgba(20,15,5,0.95) 0%, rgba(5,5,10,0.99) 80%)',
         opacity,
         transition: 'opacity 0.5s ease-in-out',
-        pointerEvents: 'none',
+        cursor: canDismiss ? 'pointer' : 'default',
       }}
+      onClick={handleDismiss}
       data-testid="calc-animation-overlay"
     >
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -792,7 +811,7 @@ function CalcAnimationOverlay({ siteNames, results, profits }: {
         animation: phase >= 1 ? 'calc-spin 3s linear infinite' : 'none',
       }} />
 
-      <div className="text-center relative z-10 px-4">
+      <div className="text-center relative z-10 px-4 py-8 max-w-md w-full">
         <div
           className="mb-4 transition-all duration-500"
           style={{
@@ -875,20 +894,46 @@ function CalcAnimationOverlay({ siteNames, results, profits }: {
           </div>
         )}
 
-        <div className="flex justify-center gap-1 mt-4">
-          {[0, 1, 2].map(i => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full"
+        {showVideo && (
+          <div className="mt-6" style={{ animation: 'calc-fade-in 0.5s ease-out' }}>
+            <video
+              ref={videoRef}
+              src="/calc-animation.mp4"
+              autoPlay
+              muted
+              playsInline
+              className="w-full max-w-sm mx-auto rounded-lg"
               style={{
-                background: phase < 3 ? '#F59E0B' : '#10B981',
-                animation: phase < 3 ? `calc-dot-bounce 1s ease-in-out infinite` : 'none',
-                animationDelay: `${i * 0.2}s`,
-                boxShadow: `0 0 8px ${phase < 3 ? 'rgba(245,158,11,0.5)' : 'rgba(16,185,129,0.5)'}`,
+                boxShadow: '0 0 30px rgba(245,158,11,0.15)',
+                border: '1px solid rgba(245,158,11,0.15)',
               }}
             />
-          ))}
-        </div>
+          </div>
+        )}
+
+        {canDismiss && (
+          <p className="text-white/50 text-xs mt-6 tracking-wider uppercase"
+            style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
+            แตะหน้าจอเพื่อดำเนินการต่อ
+          </p>
+        )}
+
+        {!canDismiss && phase >= 1 && (
+          <div className="flex justify-center gap-1 mt-4">
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full"
+                style={{
+                  background: phase < 3 ? '#F59E0B' : '#10B981',
+                  animation: `calc-dot-bounce 1s ease-in-out infinite`,
+                  animationDelay: `${i * 0.2}s`,
+                  boxShadow: `0 0 8px ${phase < 3 ? 'rgba(245,158,11,0.5)' : 'rgba(16,185,129,0.5)'}`,
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
