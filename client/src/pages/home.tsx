@@ -850,34 +850,34 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
       )}
 
       {stage === 'animation' && (
-        <div className="text-center relative z-10 px-3 py-4 max-w-sm w-full" style={{ animation: 'calc-fade-in 0.5s ease-out' }}>
+        <div className="text-center relative z-10 px-4 py-5 max-w-lg w-full" style={{ animation: 'calc-fade-in 0.5s ease-out' }}>
           <div
-            className="mb-2 transition-all duration-500"
+            className="mb-3 transition-all duration-500"
             style={{
               transform: phase >= 1 ? 'scale(1) translateY(0)' : 'scale(0.5) translateY(20px)',
               opacity: phase >= 1 ? 1 : 0,
             }}
           >
             <Calculator
-              className="h-10 w-10 mx-auto mb-1"
+              className="h-12 w-12 mx-auto mb-2"
               style={{
                 color: '#F59E0B',
                 filter: 'drop-shadow(0 0 20px rgba(245,158,11,0.6))',
                 animation: phase >= 1 && phase < 3 ? 'calc-pulse 0.6s ease-in-out infinite' : 'none',
               }}
             />
-            <p className="text-amber-400/90 text-sm font-bold tracking-[0.15em]"
+            <p className="text-amber-400/90 text-lg font-bold tracking-[0.15em]"
               style={{ textShadow: '0 0 20px rgba(245,158,11,0.4)' }}>
               {phase < 3 ? 'คำนวณยอดฝากแต่ละเว็บ' : 'คำนวณเสร็จสิ้น'}
             </p>
           </div>
 
           {phase >= 1 && phase < 3 && (
-            <div className="flex justify-center gap-1 mb-3" style={{ animation: 'calc-fade-in 0.3s ease-out' }}>
+            <div className="flex justify-center gap-1.5 mb-4" style={{ animation: 'calc-fade-in 0.3s ease-out' }}>
               {rollingNumbers.map((n, i) => (
                 <span
                   key={i}
-                  className="inline-block w-6 h-8 leading-8 text-center font-mono text-base font-bold rounded"
+                  className="inline-block w-8 h-10 leading-10 text-center font-mono text-lg font-bold rounded"
                   style={{
                     background: 'rgba(245,158,11,0.1)',
                     border: '1px solid rgba(245,158,11,0.2)',
@@ -892,30 +892,30 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
           )}
 
           {phase >= 2 && (
-            <div className="space-y-1.5 mb-3" style={{ animation: 'calc-fade-in 0.4s ease-out' }}>
+            <div className="space-y-2 mb-4" style={{ animation: 'calc-fade-in 0.4s ease-out' }}>
               {siteNames.slice(0, revealedSites).map((name, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between gap-1 text-xs px-2 py-1 rounded"
+                  className="flex items-center justify-between gap-2 text-sm px-3 py-2 rounded-md"
                   style={{
                     animation: 'calc-slide-in 0.3s ease-out',
-                    color: 'rgba(255,255,255,0.8)',
-                    background: 'rgba(245,158,11,0.04)',
+                    color: 'rgba(255,255,255,0.85)',
+                    background: 'rgba(245,158,11,0.05)',
                   }}
                 >
-                  <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
-                    <SiteLogo name={name} className="h-4 w-4" />
-                    <span className="font-medium truncate max-w-[70px]">{name}</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+                    <SiteLogo name={name} className="h-5 w-5" />
+                    <span className="font-semibold truncate max-w-[80px]">{name}</span>
                   </div>
                   {results && results[i] && (
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-emerald-400 font-bold">
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-emerald-400 font-bold text-sm">
                         {results[i].usdtUsed.toFixed(1)} USDT
                       </span>
-                      <span className="text-amber-400 font-bold">
+                      <span className="text-amber-400 font-bold text-sm">
                         {Math.round(results[i].depositedThb).toLocaleString()} THB
                       </span>
-                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      <Check className="h-4 w-4 text-emerald-400" />
                     </div>
                   )}
                 </div>
@@ -925,35 +925,35 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
 
           {phase >= 3 && profits && (
             <div style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
-              <div className="rounded-lg px-4 py-3 inline-block"
+              <div className="rounded-lg px-6 py-3 inline-block"
                 style={{
                   background: 'rgba(245,158,11,0.08)',
                   border: '1px solid rgba(245,158,11,0.2)',
                   boxShadow: '0 0 40px rgba(245,158,11,0.1)',
                 }}>
-                <p className="text-amber-400/70 text-[10px] tracking-[0.15em] mb-0.5">กำไรคาดการณ์ที่จะได้</p>
-                <p className="font-black text-xl md:text-2xl text-amber-400"
+                <p className="text-amber-400/70 text-xs tracking-[0.15em] mb-1">กำไรคาดการณ์ที่จะได้</p>
+                <p className="font-black text-2xl md:text-3xl text-amber-400"
                   style={{ textShadow: '0 0 30px rgba(245,158,11,0.5)' }}>
                   {Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()}
                 </p>
-                <p className="text-amber-400/80 text-xs font-bold">THB</p>
+                <p className="text-amber-400/80 text-sm font-bold mt-0.5">THB</p>
               </div>
             </div>
           )}
 
           {canDismiss && (
-            <p className="text-white/50 text-[10px] mt-3 tracking-wider"
+            <p className="text-white/50 text-xs mt-4 tracking-wider"
               style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
               แตะหน้าจอเพื่อดำเนินการต่อ
             </p>
           )}
 
           {!canDismiss && phase >= 1 && (
-            <div className="flex justify-center gap-1 mt-3">
+            <div className="flex justify-center gap-1 mt-4">
               {[0, 1, 2].map(i => (
                 <div
                   key={i}
-                  className="w-1.5 h-1.5 rounded-full"
+                  className="w-2 h-2 rounded-full"
                   style={{
                     background: phase < 3 ? '#F59E0B' : '#10B981',
                     animation: `calc-dot-bounce 1s ease-in-out infinite`,
