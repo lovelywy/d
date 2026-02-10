@@ -364,7 +364,7 @@ export default function App() {
       )}
 
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="flex flex-wrap justify-between items-center gap-2 py-2">
+        <header className="relative flex flex-wrap justify-between items-center gap-2 py-2">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight" data-testid="text-copyright">
@@ -372,13 +372,11 @@ export default function App() {
               Published&reg; Copyright by &copy; Niwat Raksanit
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
-              <RefreshCcw className="h-4 w-4" />
-            </Button>
-            <div className="h-20 w-20 md:h-24 md:w-24 overflow-hidden" data-testid="img-logo">
-              <img src="/dollcara-logo.png" alt="Dollcara" className="w-full h-auto object-contain" style={{ marginBottom: '-15%' }} />
-            </div>
+          <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+          <div className="absolute top-0 right-0 h-20 w-20 md:h-24 md:w-24 overflow-hidden pointer-events-none" data-testid="img-logo">
+            <img src="/dollcara-logo.png" alt="Dollcara" className="w-full h-auto object-contain" style={{ marginBottom: '-15%' }} />
           </div>
         </header>
 
