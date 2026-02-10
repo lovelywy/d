@@ -23,6 +23,12 @@ import sbfLogo from "@assets/images_(14)_1770527347021.jpeg";
 import huc99Logo from "@assets/images_(11)_1770538479369.jpeg";
 import henghengLogo from "@assets/images_(21)_1770538479358.jpeg";
 import pay69Logo from "@assets/Picture.1_1770538479344.webp";
+import h25Logo from "@assets/202601020247582246723_1770742305009.webp";
+import logo239Logo from "@assets/app-icon_1770742305037.png";
+import logo2066Logo from "@assets/202510120357159802355_1770742305051.png";
+import z16Logo from "@assets/202512010252497383049_1770742305066.gif";
+import ysl99Logo from "@assets/logo_(1)_1770742305078.png";
+import kc9Logo from "@assets/logo20250513054304358_1770742305088.png";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -35,6 +41,12 @@ const SITE_LOGOS: Record<string, string> = {
   "เฮงเฮง": henghengLogo,
   "hengheng": henghengLogo,
   "pay69": pay69Logo,
+  "h25": h25Logo,
+  "239": logo239Logo,
+  "2066": logo2066Logo,
+  "z16": z16Logo,
+  "ysl99": ysl99Logo,
+  "kc9": kc9Logo,
 };
 
 function getSiteLogo(name: string): string | null {
