@@ -256,10 +256,8 @@ export default function App() {
         numSites: selectedSites.length,
       });
 
-      setTimeout(() => {
-        setCalcResults(results);
-        setProfits({ min: minProfitValue, max: maxProfitValue });
-      }, 3200);
+      setCalcResults(results);
+      setProfits({ min: minProfitValue, max: maxProfitValue });
     } else {
       setCalcResults(results);
       setProfits({ min: minProfitValue, max: maxProfitValue });
@@ -354,12 +352,13 @@ export default function App() {
           siteNames={calcAnimation.sites}
           results={calcAnimation.results}
           profits={calcAnimation.profits}
-          onDismiss={() => {
-            const anim = calcAnimation;
-            setCalcAnimation(null);
-            if (anim?.profits) {
-              speak(`วาวาคิดให้นะ ฝาก ${anim.numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(anim.profits.min)} บาท สูงสุดอาจจะได้ถึง ${Math.round(anim.profits.max)} บาท เลยนะคะ`);
+          onVideoEnd={() => {
+            if (calcAnimation?.profits) {
+              speak(`วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(calcAnimation.profits.min)} บาท สูงสุดอาจจะได้ถึง ${Math.round(calcAnimation.profits.max)} บาท เลยนะคะ`);
             }
+          }}
+          onDismiss={() => {
+            setCalcAnimation(null);
           }}
         />
       )}
@@ -712,24 +711,33 @@ export default function App() {
   );
 }
 
-function CalcAnimationOverlay({ siteNames, results, profits, onDismiss }: {
+function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismiss }: {
   siteNames: string[];
   results: any[] | null;
   profits: { min: number; max: number } | null;
+  onVideoEnd: () => void;
   onDismiss: () => void;
 }) {
+  const [stage, setStage] = useState<'video' | 'animation'>('video');
   const [phase, setPhase] = useState(0);
   const [opacity, setOpacity] = useState(0);
   const [rollingNumbers, setRollingNumbers] = useState<number[]>([]);
   const [revealedSites, setRevealedSites] = useState<number>(0);
-  const [showVideo, setShowVideo] = useState(false);
   const [canDismiss, setCanDismiss] = useState(false);
   const [dismissing, setDismissing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const rollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setOpacity(1);
-    const rollInterval = setInterval(() => {
+  }, []);
+
+  const handleVideoEnd = useCallback(() => {
+    setStage('animation');
+    onVideoEnd();
+
+    rollRef.current = setInterval(() => {
       setRollingNumbers(Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)));
     }, 50);
 
@@ -737,25 +745,24 @@ function CalcAnimationOverlay({ siteNames, results, profits, onDismiss }: {
     const t2 = setTimeout(() => setPhase(2), 1200);
     const t3 = setTimeout(() => {
       setPhase(3);
-      clearInterval(rollInterval);
+      if (rollRef.current) clearInterval(rollRef.current);
     }, 2400);
-    const t4 = setTimeout(() => {
-      setShowVideo(true);
-    }, 3200);
-    const t5 = setTimeout(() => {
-      setCanDismiss(true);
-    }, 9200);
+    const t4 = setTimeout(() => setCanDismiss(true), 3200);
 
     const siteTimers: ReturnType<typeof setTimeout>[] = [];
     siteNames.forEach((_, i) => {
       siteTimers.push(setTimeout(() => setRevealedSites(i + 1), 1400 + i * 250));
     });
 
+    timersRef.current = [t1, t2, t3, t4, ...siteTimers];
+  }, [siteNames, onVideoEnd]);
+
+  useEffect(() => {
     return () => {
-      clearInterval(rollInterval);
-      [t1, t2, t3, t4, t5, ...siteTimers].forEach(clearTimeout);
+      if (rollRef.current) clearInterval(rollRef.current);
+      timersRef.current.forEach(clearTimeout);
     };
-  }, [siteNames]);
+  }, []);
 
   const handleDismiss = useCallback(() => {
     if (!canDismiss || dismissing) return;
@@ -785,156 +792,163 @@ function CalcAnimationOverlay({ siteNames, results, profits, onDismiss }: {
       onClick={handleDismiss}
       data-testid="calc-animation-overlay"
     >
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {particles.map(p => (
-          <div
-            key={p.id}
-            className="absolute rounded-full"
-            style={{
-              width: p.size,
-              height: p.size,
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              background: 'radial-gradient(circle, #F59E0B, #D97706)',
-              boxShadow: '0 0 6px rgba(245,158,11,0.5)',
-              animation: `calc-particle ${p.duration}s ease-in-out infinite`,
-              animationDelay: `${p.delay}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: phase >= 1
-          ? 'conic-gradient(from 0deg, transparent, rgba(245,158,11,0.05), transparent, rgba(245,158,11,0.08), transparent)'
-          : 'none',
-        animation: phase >= 1 ? 'calc-spin 3s linear infinite' : 'none',
-      }} />
-
-      <div className="text-center relative z-10 px-4 py-8 max-w-md w-full">
-        <div
-          className="mb-4 transition-all duration-500"
-          style={{
-            transform: phase >= 1 ? 'scale(1) translateY(0)' : 'scale(0.5) translateY(20px)',
-            opacity: phase >= 1 ? 1 : 0,
-          }}
-        >
-          <Calculator
-            className="h-16 w-16 mx-auto mb-3"
-            style={{
-              color: '#F59E0B',
-              filter: 'drop-shadow(0 0 20px rgba(245,158,11,0.6))',
-              animation: phase >= 1 && phase < 3 ? 'calc-pulse 0.6s ease-in-out infinite' : 'none',
-            }}
-          />
-          <p className="text-amber-400/90 text-lg font-bold tracking-[0.2em] uppercase"
-            style={{ textShadow: '0 0 20px rgba(245,158,11,0.4)' }}>
-            {phase < 3 ? 'CALCULATING' : 'COMPLETE'}
-          </p>
-        </div>
-
-        {phase >= 1 && phase < 3 && (
-          <div className="flex justify-center gap-1 mb-6" style={{ animation: 'calc-fade-in 0.3s ease-out' }}>
-            {rollingNumbers.map((n, i) => (
-              <span
-                key={i}
-                className="inline-block w-7 h-10 leading-10 text-center font-mono text-xl font-bold rounded"
-                style={{
-                  background: 'rgba(245,158,11,0.1)',
-                  border: '1px solid rgba(245,158,11,0.2)',
-                  color: '#FBBF24',
-                  textShadow: '0 0 10px rgba(251,191,36,0.5)',
-                }}
-              >
-                {n}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {phase >= 2 && (
-          <div className="space-y-2 mb-6" style={{ animation: 'calc-fade-in 0.4s ease-out' }}>
-            {siteNames.slice(0, revealedSites).map((name, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-center gap-2 text-sm"
-                style={{
-                  animation: 'calc-slide-in 0.3s ease-out',
-                  color: 'rgba(255,255,255,0.8)',
-                }}
-              >
-                <SiteLogo name={name} className="h-5 w-5" />
-                <span className="font-medium">{name}</span>
-                {results && results[i] && (
-                  <span className="text-amber-400 font-bold ml-2">
-                    {Math.round(results[i].depositedThb).toLocaleString()} THB
-                  </span>
-                )}
-                <Check className="h-4 w-4 text-emerald-400 ml-1" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {phase >= 3 && profits && (
-          <div style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
-            <div className="rounded-lg px-6 py-4 inline-block"
+      {stage === 'animation' && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {particles.map(p => (
+            <div
+              key={p.id}
+              className="absolute rounded-full"
               style={{
-                background: 'rgba(245,158,11,0.08)',
-                border: '1px solid rgba(245,158,11,0.2)',
-                boxShadow: '0 0 40px rgba(245,158,11,0.1)',
-              }}>
-              <p className="text-amber-400/70 text-xs uppercase tracking-[0.2em] mb-1">Predicted Profit</p>
-              <p className="font-black text-2xl md:text-3xl text-amber-400"
-                style={{ textShadow: '0 0 30px rgba(245,158,11,0.5)' }}>
-                {Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()}
-              </p>
-              <p className="text-amber-400/80 text-sm font-bold mt-1">THB</p>
-            </div>
-          </div>
-        )}
-
-        {showVideo && (
-          <div className="mt-6" style={{ animation: 'calc-fade-in 0.5s ease-out' }}>
-            <video
-              ref={videoRef}
-              src="/calc-animation.mp4"
-              autoPlay
-              muted
-              playsInline
-              className="w-full max-w-sm mx-auto rounded-lg"
-              style={{
-                boxShadow: '0 0 30px rgba(245,158,11,0.15)',
-                border: '1px solid rgba(245,158,11,0.15)',
+                width: p.size,
+                height: p.size,
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                background: 'radial-gradient(circle, #F59E0B, #D97706)',
+                boxShadow: '0 0 6px rgba(245,158,11,0.5)',
+                animation: `calc-particle ${p.duration}s ease-in-out infinite`,
+                animationDelay: `${p.delay}s`,
               }}
             />
+          ))}
+        </div>
+      )}
+
+      {stage === 'animation' && (
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: phase >= 1
+            ? 'conic-gradient(from 0deg, transparent, rgba(245,158,11,0.05), transparent, rgba(245,158,11,0.08), transparent)'
+            : 'none',
+          animation: phase >= 1 ? 'calc-spin 3s linear infinite' : 'none',
+        }} />
+      )}
+
+      {stage === 'video' && (
+        <div className="text-center relative z-10 px-4 w-full max-w-lg">
+          <video
+            ref={videoRef}
+            src="/calc-animation.mp4"
+            autoPlay
+            playsInline
+            onEnded={handleVideoEnd}
+            className="w-full rounded-lg"
+            style={{
+              boxShadow: '0 0 40px rgba(245,158,11,0.2)',
+              border: '1px solid rgba(245,158,11,0.2)',
+            }}
+            data-testid="calc-video"
+          />
+        </div>
+      )}
+
+      {stage === 'animation' && (
+        <div className="text-center relative z-10 px-4 py-8 max-w-md w-full" style={{ animation: 'calc-fade-in 0.5s ease-out' }}>
+          <div
+            className="mb-4 transition-all duration-500"
+            style={{
+              transform: phase >= 1 ? 'scale(1) translateY(0)' : 'scale(0.5) translateY(20px)',
+              opacity: phase >= 1 ? 1 : 0,
+            }}
+          >
+            <Calculator
+              className="h-16 w-16 mx-auto mb-3"
+              style={{
+                color: '#F59E0B',
+                filter: 'drop-shadow(0 0 20px rgba(245,158,11,0.6))',
+                animation: phase >= 1 && phase < 3 ? 'calc-pulse 0.6s ease-in-out infinite' : 'none',
+              }}
+            />
+            <p className="text-amber-400/90 text-lg font-bold tracking-[0.2em] uppercase"
+              style={{ textShadow: '0 0 20px rgba(245,158,11,0.4)' }}>
+              {phase < 3 ? 'CALCULATING' : 'COMPLETE'}
+            </p>
           </div>
-        )}
 
-        {canDismiss && (
-          <p className="text-white/50 text-xs mt-6 tracking-wider uppercase"
-            style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
-            แตะหน้าจอเพื่อดำเนินการต่อ
-          </p>
-        )}
+          {phase >= 1 && phase < 3 && (
+            <div className="flex justify-center gap-1 mb-6" style={{ animation: 'calc-fade-in 0.3s ease-out' }}>
+              {rollingNumbers.map((n, i) => (
+                <span
+                  key={i}
+                  className="inline-block w-7 h-10 leading-10 text-center font-mono text-xl font-bold rounded"
+                  style={{
+                    background: 'rgba(245,158,11,0.1)',
+                    border: '1px solid rgba(245,158,11,0.2)',
+                    color: '#FBBF24',
+                    textShadow: '0 0 10px rgba(251,191,36,0.5)',
+                  }}
+                >
+                  {n}
+                </span>
+              ))}
+            </div>
+          )}
 
-        {!canDismiss && phase >= 1 && (
-          <div className="flex justify-center gap-1 mt-4">
-            {[0, 1, 2].map(i => (
-              <div
-                key={i}
-                className="w-2 h-2 rounded-full"
+          {phase >= 2 && (
+            <div className="space-y-2 mb-6" style={{ animation: 'calc-fade-in 0.4s ease-out' }}>
+              {siteNames.slice(0, revealedSites).map((name, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-center gap-2 text-sm"
+                  style={{
+                    animation: 'calc-slide-in 0.3s ease-out',
+                    color: 'rgba(255,255,255,0.8)',
+                  }}
+                >
+                  <SiteLogo name={name} className="h-5 w-5" />
+                  <span className="font-medium">{name}</span>
+                  {results && results[i] && (
+                    <span className="text-amber-400 font-bold ml-2">
+                      {Math.round(results[i].depositedThb).toLocaleString()} THB
+                    </span>
+                  )}
+                  <Check className="h-4 w-4 text-emerald-400 ml-1" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {phase >= 3 && profits && (
+            <div style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              <div className="rounded-lg px-6 py-4 inline-block"
                 style={{
-                  background: phase < 3 ? '#F59E0B' : '#10B981',
-                  animation: `calc-dot-bounce 1s ease-in-out infinite`,
-                  animationDelay: `${i * 0.2}s`,
-                  boxShadow: `0 0 8px ${phase < 3 ? 'rgba(245,158,11,0.5)' : 'rgba(16,185,129,0.5)'}`,
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+                  background: 'rgba(245,158,11,0.08)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                  boxShadow: '0 0 40px rgba(245,158,11,0.1)',
+                }}>
+                <p className="text-amber-400/70 text-xs uppercase tracking-[0.2em] mb-1">Predicted Profit</p>
+                <p className="font-black text-2xl md:text-3xl text-amber-400"
+                  style={{ textShadow: '0 0 30px rgba(245,158,11,0.5)' }}>
+                  {Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()}
+                </p>
+                <p className="text-amber-400/80 text-sm font-bold mt-1">THB</p>
+              </div>
+            </div>
+          )}
+
+          {canDismiss && (
+            <p className="text-white/50 text-xs mt-6 tracking-wider uppercase"
+              style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
+              แตะหน้าจอเพื่อดำเนินการต่อ
+            </p>
+          )}
+
+          {!canDismiss && phase >= 1 && (
+            <div className="flex justify-center gap-1 mt-4">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    background: phase < 3 ? '#F59E0B' : '#10B981',
+                    animation: `calc-dot-bounce 1s ease-in-out infinite`,
+                    animationDelay: `${i * 0.2}s`,
+                    boxShadow: `0 0 8px ${phase < 3 ? 'rgba(245,158,11,0.5)' : 'rgba(16,185,129,0.5)'}`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
