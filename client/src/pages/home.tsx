@@ -85,6 +85,7 @@ export default function App() {
   const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
   const [configName, setConfigName] = useState("");
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
+  const [calcAnimation, setCalcAnimation] = useState<{ show: boolean; sites: string[]; results: any[] | null; profits: { min: number; max: number } | null } | null>(null);
 
   const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
@@ -239,20 +240,34 @@ export default function App() {
       };
     });
 
-    setCalcResults(results);
-
     const totalCredits = results.reduce((sum, res) => sum + res.totalCreditWithBonus, 0);
     const A = totalCredits / 2;
     const B = A * 0.95;
     const Y = A + B;
     const minProfitValue = Y - totalCapitalThb;
     const maxProfitValue = totalCredits - totalCapitalThb;
-    
-    setProfits({ min: minProfitValue, max: maxProfitValue });
 
     if (withVoice) {
-      const numSites = selectedSites.length;
-      speak(`วาวาคิดให้นะ ฝาก ${numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(minProfitValue)} บาท สูงสุดอาจจะได้ถึง ${Math.round(maxProfitValue)} บาท เลยนะคะ`);
+      setCalcAnimation({
+        show: true,
+        sites: selectedSites.map(s => s.name),
+        results,
+        profits: { min: minProfitValue, max: maxProfitValue },
+      });
+
+      setTimeout(() => {
+        setCalcResults(results);
+        setProfits({ min: minProfitValue, max: maxProfitValue });
+      }, 3200);
+
+      setTimeout(() => {
+        setCalcAnimation(null);
+        const numSites = selectedSites.length;
+        speak(`วาวาคิดให้นะ ฝาก ${numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(minProfitValue)} บาท สูงสุดอาจจะได้ถึง ${Math.round(maxProfitValue)} บาท เลยนะคะ`);
+      }, 4000);
+    } else {
+      setCalcResults(results);
+      setProfits({ min: minProfitValue, max: maxProfitValue });
     }
   };
 
@@ -338,6 +353,13 @@ export default function App() {
     <div className="min-h-screen bg-background subtle-grid p-4 md:p-8">
       {celebration?.show && (
         <CelebrationOverlay profit={celebration.profit} isProfit={celebration.isProfit} />
+      )}
+      {calcAnimation?.show && (
+        <CalcAnimationOverlay
+          siteNames={calcAnimation.sites}
+          results={calcAnimation.results}
+          profits={calcAnimation.profits}
+        />
       )}
 
       <div className="max-w-5xl mx-auto space-y-6">
@@ -683,6 +705,190 @@ export default function App() {
           <p className="text-xs text-muted-foreground" data-testid="text-credit-creative">Creative by Studio Billy Here is Melody</p>
           <p className="text-xs text-muted-foreground" data-testid="text-credit-director">Director and Producer Published by Niwat Raksanit</p>
         </footer>
+      </div>
+    </div>
+  );
+}
+
+function CalcAnimationOverlay({ siteNames, results, profits }: {
+  siteNames: string[];
+  results: any[] | null;
+  profits: { min: number; max: number } | null;
+}) {
+  const [phase, setPhase] = useState(0);
+  const [opacity, setOpacity] = useState(0);
+  const [rollingNumbers, setRollingNumbers] = useState<number[]>([]);
+  const [revealedSites, setRevealedSites] = useState<number>(0);
+
+  useEffect(() => {
+    setOpacity(1);
+    const rollInterval = setInterval(() => {
+      setRollingNumbers(Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)));
+    }, 50);
+
+    const t1 = setTimeout(() => setPhase(1), 400);
+    const t2 = setTimeout(() => setPhase(2), 1200);
+    const t3 = setTimeout(() => setPhase(3), 2400);
+    const t4 = setTimeout(() => {
+      clearInterval(rollInterval);
+      setPhase(4);
+    }, 3200);
+    const t5 = setTimeout(() => setOpacity(0), 3600);
+
+    const siteTimers: ReturnType<typeof setTimeout>[] = [];
+    siteNames.forEach((_, i) => {
+      siteTimers.push(setTimeout(() => setRevealedSites(i + 1), 1400 + i * 250));
+    });
+
+    return () => {
+      clearInterval(rollInterval);
+      [t1, t2, t3, t4, t5, ...siteTimers].forEach(clearTimeout);
+    };
+  }, [siteNames]);
+
+  const particles = Array.from({ length: 40 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 4 + 1,
+    delay: Math.random() * 2,
+    duration: 2 + Math.random() * 3,
+  }));
+
+  return (
+    <div
+      className="fixed inset-0 z-[9998] flex items-center justify-center"
+      style={{
+        background: 'radial-gradient(ellipse at center, rgba(20,15,5,0.95) 0%, rgba(5,5,10,0.99) 80%)',
+        opacity,
+        transition: 'opacity 0.5s ease-in-out',
+        pointerEvents: 'none',
+      }}
+      data-testid="calc-animation-overlay"
+    >
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {particles.map(p => (
+          <div
+            key={p.id}
+            className="absolute rounded-full"
+            style={{
+              width: p.size,
+              height: p.size,
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              background: 'radial-gradient(circle, #F59E0B, #D97706)',
+              boxShadow: '0 0 6px rgba(245,158,11,0.5)',
+              animation: `calc-particle ${p.duration}s ease-in-out infinite`,
+              animationDelay: `${p.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: phase >= 1
+          ? 'conic-gradient(from 0deg, transparent, rgba(245,158,11,0.05), transparent, rgba(245,158,11,0.08), transparent)'
+          : 'none',
+        animation: phase >= 1 ? 'calc-spin 3s linear infinite' : 'none',
+      }} />
+
+      <div className="text-center relative z-10 px-4">
+        <div
+          className="mb-4 transition-all duration-500"
+          style={{
+            transform: phase >= 1 ? 'scale(1) translateY(0)' : 'scale(0.5) translateY(20px)',
+            opacity: phase >= 1 ? 1 : 0,
+          }}
+        >
+          <Calculator
+            className="h-16 w-16 mx-auto mb-3"
+            style={{
+              color: '#F59E0B',
+              filter: 'drop-shadow(0 0 20px rgba(245,158,11,0.6))',
+              animation: phase >= 1 && phase < 3 ? 'calc-pulse 0.6s ease-in-out infinite' : 'none',
+            }}
+          />
+          <p className="text-amber-400/90 text-lg font-bold tracking-[0.2em] uppercase"
+            style={{ textShadow: '0 0 20px rgba(245,158,11,0.4)' }}>
+            {phase < 3 ? 'CALCULATING' : 'COMPLETE'}
+          </p>
+        </div>
+
+        {phase >= 1 && phase < 3 && (
+          <div className="flex justify-center gap-1 mb-6" style={{ animation: 'calc-fade-in 0.3s ease-out' }}>
+            {rollingNumbers.map((n, i) => (
+              <span
+                key={i}
+                className="inline-block w-7 h-10 leading-10 text-center font-mono text-xl font-bold rounded"
+                style={{
+                  background: 'rgba(245,158,11,0.1)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                  color: '#FBBF24',
+                  textShadow: '0 0 10px rgba(251,191,36,0.5)',
+                }}
+              >
+                {n}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {phase >= 2 && (
+          <div className="space-y-2 mb-6" style={{ animation: 'calc-fade-in 0.4s ease-out' }}>
+            {siteNames.slice(0, revealedSites).map((name, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-center gap-2 text-sm"
+                style={{
+                  animation: 'calc-slide-in 0.3s ease-out',
+                  color: 'rgba(255,255,255,0.8)',
+                }}
+              >
+                <SiteLogo name={name} className="h-5 w-5" />
+                <span className="font-medium">{name}</span>
+                {results && results[i] && (
+                  <span className="text-amber-400 font-bold ml-2">
+                    {Math.round(results[i].depositedThb).toLocaleString()} THB
+                  </span>
+                )}
+                <Check className="h-4 w-4 text-emerald-400 ml-1" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {phase >= 3 && profits && (
+          <div style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div className="rounded-lg px-6 py-4 inline-block"
+              style={{
+                background: 'rgba(245,158,11,0.08)',
+                border: '1px solid rgba(245,158,11,0.2)',
+                boxShadow: '0 0 40px rgba(245,158,11,0.1)',
+              }}>
+              <p className="text-amber-400/70 text-xs uppercase tracking-[0.2em] mb-1">Predicted Profit</p>
+              <p className="font-black text-2xl md:text-3xl text-amber-400"
+                style={{ textShadow: '0 0 30px rgba(245,158,11,0.5)' }}>
+                {Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()}
+              </p>
+              <p className="text-amber-400/80 text-sm font-bold mt-1">THB</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-center gap-1 mt-4">
+          {[0, 1, 2].map(i => (
+            <div
+              key={i}
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: phase < 3 ? '#F59E0B' : '#10B981',
+                animation: phase < 3 ? `calc-dot-bounce 1s ease-in-out infinite` : 'none',
+                animationDelay: `${i * 0.2}s`,
+                boxShadow: `0 0 8px ${phase < 3 ? 'rgba(245,158,11,0.5)' : 'rgba(16,185,129,0.5)'}`,
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
