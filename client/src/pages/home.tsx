@@ -350,6 +350,7 @@ export default function App() {
           signatureName={signatureName}
           setSignatureName={setSignatureName}
           onDismiss={handleCelebrationDismiss}
+          cachedVoice={cachedVoiceRef.current}
         />
       )}
       {calcAnimation?.show && (
@@ -1003,7 +1004,7 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
   );
 }
 
-function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithdrawals, signatureName, setSignatureName, onDismiss }: {
+function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithdrawals, signatureName, setSignatureName, onDismiss, cachedVoice }: {
   profit: number;
   isProfit: boolean;
   profitPct: number;
@@ -1012,6 +1013,7 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
   signatureName: string;
   setSignatureName: (v: string) => void;
   onDismiss: () => void;
+  cachedVoice: SpeechSynthesisVoice | null;
 }) {
   const safeProfitVal = isNaN(profit) ? 0 : Math.round(profit);
   const safeCapital = isNaN(capitalThb) ? 0 : Math.round(capitalThb);
@@ -1036,26 +1038,57 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
     opacity: 0.6 + Math.random() * 0.4,
   })), []);
 
-  const speakLocal = useCallback((text: string): SpeechSynthesisUtterance => {
+  const speakWithCallback = useCallback((text: string, onDone?: () => void) => {
     const synth = window.speechSynthesis;
+    if (!synth) { onDone?.(); return; }
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "th-TH";
-    u.rate = 0.9;
-    const voices = synth.getVoices();
-    const thVoice = voices.find(v => v.lang.startsWith("th"));
-    if (thVoice) u.voice = thVoice;
+    u.rate = 1.0;
+    u.volume = 1.0;
+    if (cachedVoice) {
+      u.voice = cachedVoice;
+    } else {
+      const voices = synth.getVoices();
+      const thVoice = voices.find(v => v.lang === 'th-TH') || voices.find(v => v.lang.startsWith("th"));
+      if (thVoice) u.voice = thVoice;
+    }
+
+    let ended = false;
+    const finish = () => { if (!ended) { ended = true; onDone?.(); } };
+    u.onend = finish;
+    u.onerror = finish;
+
+    const charCount = text.length;
+    const estimatedMs = Math.max(3000, charCount * 120);
+    const fallback = setTimeout(finish, estimatedMs);
+    const origFinish = finish;
+    u.onend = () => { clearTimeout(fallback); origFinish(); };
+    u.onerror = () => { clearTimeout(fallback); origFinish(); };
+
+    const keepAlive = setInterval(() => {
+      if (!synth.speaking) { clearInterval(keepAlive); return; }
+      synth.pause();
+      synth.resume();
+    }, 5000);
+    const origEnd = u.onend;
+    u.onend = () => { clearInterval(keepAlive); clearTimeout(fallback); if (!ended) { ended = true; onDone?.(); } };
+    u.onerror = () => { clearInterval(keepAlive); clearTimeout(fallback); if (!ended) { ended = true; onDone?.(); } };
+
     synth.speak(u);
-    return u;
-  }, []);
+  }, [cachedVoice]);
 
   useEffect(() => {
+    const fallback = setTimeout(() => {
+      if (!hasTriggeredRef.current) handleVideoFirstLoop();
+    }, 8000);
     return () => {
-      window.speechSynthesis.cancel();
+      clearTimeout(fallback);
+      window.speechSynthesis?.cancel();
       timersRef.current.forEach(clearTimeout);
       if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
     };
-  }, []);
+  }, [handleVideoFirstLoop]);
 
   const startChillAudio = useCallback(() => {
     try {
@@ -1114,13 +1147,12 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
       voiceText = `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${safeCapital} บาท ถอนได้ ${totalWithdrawal} บาท กำไร ${safeProfitVal} บาท คิดเป็น ${pctText} มหาศาลเลยค่ะ!`;
     }
 
-    const utterance = speakLocal(voiceText);
-    utterance.onend = () => {
+    speakWithCallback(voiceText, () => {
       setStage('chill');
       setCanTap(true);
       startChillAudio();
-    };
-  }, [isProfit, safeProfitVal, safeCapital, totalWithdrawal, profitPct, speakLocal, startChillAudio]);
+    });
+  }, [isProfit, safeProfitVal, safeCapital, totalWithdrawal, profitPct, speakWithCallback, startChillAudio]);
 
   const handleTapScreen = useCallback(() => {
     if (!canTap || stage !== 'chill') return;
@@ -1131,10 +1163,11 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
   const handleSign = useCallback(() => {
     if (!signatureName.trim()) return;
     setStage('done');
-    speakLocal("เฮ้! สุดยอดเลยค่ะ!");
-    const t = setTimeout(() => onDismiss(), 2500);
-    timersRef.current.push(t);
-  }, [signatureName, speakLocal, onDismiss]);
+    speakWithCallback("เฮ้! สุดยอดเลยค่ะ!", () => {
+      const t = setTimeout(() => onDismiss(), 800);
+      timersRef.current.push(t);
+    });
+  }, [signatureName, speakWithCallback, onDismiss]);
 
   return (
     <div
