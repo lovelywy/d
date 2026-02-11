@@ -31,6 +31,7 @@ import ysl99Logo from "@assets/logo_(2)_1770746907176.png";
 import kc9Logo from "@assets/logo20250513054304358_(1)_1770746907160.png";
 import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
 import m98Logo from "@assets/l20220608030750449_1770746907302.png";
+import dollcaraLogo from "@assets/AIRetouch_20260211_092959046_1770777480106.png";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -364,10 +365,13 @@ export default function App() {
       )}
 
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="relative flex flex-wrap justify-between items-center gap-2 py-2">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
-            <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight" data-testid="text-copyright">
+        <header className="relative flex flex-wrap items-center gap-2 py-2">
+          <div className="h-16 w-28 md:h-20 md:w-36 flex-shrink-0 pointer-events-none" data-testid="img-logo">
+            <img src={dollcaraLogo} alt="Dollcara" className="w-full h-full object-contain" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
+            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight" data-testid="text-copyright">
               เผยแพร่&reg; ลิขสิทธิ์ โดย &copy; นิวัฒน์ รักสนิท<br />
               Published&reg; Copyright by &copy; Niwat Raksanit
             </p>
@@ -375,9 +379,6 @@ export default function App() {
           <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
             <RefreshCcw className="h-4 w-4" />
           </Button>
-          <div className="absolute top-0 right-0 h-20 w-20 md:h-24 md:w-24 overflow-hidden pointer-events-none" data-testid="img-logo">
-            <img src="/dollcara-logo.png" alt="Dollcara" className="w-full h-auto object-contain" style={{ marginBottom: '-15%' }} />
-          </div>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
