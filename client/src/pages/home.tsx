@@ -725,7 +725,7 @@ export default function App() {
       {activeTab !== "calculator" && (
         <Button
           size="icon"
-          className="fixed bottom-6 right-6 z-[100] rounded-full shadow-lg"
+          className="fixed bottom-6 right-6 z-[99999] rounded-full shadow-lg"
           style={{
             background: 'linear-gradient(135deg, #F59E0B, #D97706)',
             color: '#000',
