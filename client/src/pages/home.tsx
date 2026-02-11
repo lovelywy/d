@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen } from "lucide-react";
+import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen, Home as HomeIcon } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 import jun88Logo from "@assets/1770526630864_1770526755572.jpg";
 import dk7Logo from "@assets/logo20220909053526986_1770746907226.png";
@@ -720,6 +720,26 @@ export default function App() {
           <img src={footerBanner} alt="Dollcara Footer" className="w-full h-auto object-contain" />
         </footer>
       </div>
+
+      {activeTab !== "calculator" && (
+        <Button
+          size="icon"
+          className="fixed bottom-6 right-6 z-[100] rounded-full shadow-lg"
+          style={{
+            background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+            color: '#000',
+            width: '48px',
+            height: '48px',
+          }}
+          onClick={() => {
+            setActiveTab("calculator");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          data-testid="button-float-home"
+        >
+          <HomeIcon className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   );
 }
