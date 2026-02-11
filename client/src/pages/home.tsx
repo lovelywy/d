@@ -358,7 +358,8 @@ export default function App() {
           profits={calcAnimation.profits}
           onVideoEnd={() => {
             if (calcAnimation?.profits) {
-              speak(`วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อย ${calcAnimation.profits.minPct.toFixed(1)} เปอร์เซ็นต์ สูงสุดอาจจะได้ถึง ${calcAnimation.profits.maxPct.toFixed(1)} เปอร์เซ็นต์ เลยนะคะ`);
+              const avgPct = ((calcAnimation.profits.minPct + calcAnimation.profits.maxPct) / 2).toFixed(1);
+              speak(`วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรขั้นต่ำ ${Math.round(calcAnimation.profits.min)} บาท สูงสุด ${Math.round(calcAnimation.profits.max)} บาท เฉลี่ยประมาณ ${avgPct} เปอร์เซ็นต์ เลยนะคะ`);
             }
           }}
           onDismiss={() => {
