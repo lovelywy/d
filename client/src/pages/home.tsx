@@ -365,20 +365,21 @@ export default function App() {
       )}
 
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="relative flex items-center gap-3 py-2">
-          <div className="w-24 md:w-32 flex-shrink-0 pointer-events-none" data-testid="img-logo">
+        <header className="relative py-2">
+          <div className="w-full pointer-events-none" data-testid="img-logo">
             <img src={dollcaraLogo} alt="Dollcara" className="w-full h-auto object-contain" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
-            <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight" data-testid="text-copyright">
-              เผยแพร่&reg; ลิขสิทธิ์ โดย &copy; นิวัฒน์ รักสนิท<br />
-              Published&reg; Copyright by &copy; Niwat Raksanit
-            </p>
+          <div className="absolute bottom-2 left-0 right-0 flex items-end justify-between gap-2 px-1 pointer-events-auto">
+            <div>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight gold-text drop-shadow-lg" data-testid="text-app-title">Dollcara Mission by Vava</h1>
+              <p className="text-[8px] text-muted-foreground leading-tight drop-shadow-md" data-testid="text-copyright">
+                เผยแพร่&reg; ลิขสิทธิ์ โดย &copy; นิวัฒน์ รักสนิท | Published&reg; Copyright by &copy; Niwat Raksanit
+              </p>
+            </div>
+            <Button variant="outline" size="icon" className="flex-shrink-0" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="outline" size="icon" className="flex-shrink-0" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
-            <RefreshCcw className="h-4 w-4" />
-          </Button>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
