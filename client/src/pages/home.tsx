@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -83,7 +83,7 @@ export default function App() {
     try { const s = localStorage.getItem("last-sites"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [activeTab, setActiveTab] = useState("calculator");
-  const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean; profitPct: number } | null>(null);
+  const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean; profitPct: number; capitalThb: number; siteWithdrawals: { name: string; amount: number }[] } | null>(null);
   const [signatureName, setSignatureName] = useState("");
   const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
   const [configName, setConfigName] = useState("");
@@ -325,7 +325,8 @@ export default function App() {
     });
 
     const isProfit = finalProfit >= 0;
-    setCelebration({ show: true, profit: finalProfit, isProfit, profitPct });
+    const siteWithdrawals = trackerSites.map(s => ({ name: s.name, amount: parseFloat(s.remainingBalance || "0") }));
+    setCelebration({ show: true, profit: finalProfit, isProfit, profitPct, capitalThb: totalCapitalThb, siteWithdrawals });
     setSignatureName("");
   };
 
@@ -344,6 +345,8 @@ export default function App() {
           profit={celebration.profit}
           isProfit={celebration.isProfit}
           profitPct={celebration.profitPct}
+          capitalThb={celebration.capitalThb}
+          siteWithdrawals={celebration.siteWithdrawals}
           signatureName={signatureName}
           setSignatureName={setSignatureName}
           onDismiss={handleCelebrationDismiss}
@@ -980,17 +983,36 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
   );
 }
 
-function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSignatureName, onDismiss }: {
+function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithdrawals, signatureName, setSignatureName, onDismiss }: {
   profit: number;
   isProfit: boolean;
   profitPct: number;
+  capitalThb: number;
+  siteWithdrawals: { name: string; amount: number }[];
   signatureName: string;
   setSignatureName: (v: string) => void;
   onDismiss: () => void;
 }) {
+  const safeSiteWithdrawals = useMemo(() => siteWithdrawals.map(sw => ({ name: sw.name, amount: isNaN(sw.amount) ? 0 : sw.amount })), [siteWithdrawals]);
+  const totalWithdrawal = safeSiteWithdrawals.reduce((s, w) => s + w.amount, 0);
+  const safeCapital = isNaN(capitalThb) ? 0 : capitalThb;
   const [stage, setStage] = useState<'video' | 'result' | 'waiting' | 'signed'>('video');
   const [animatedValue, setAnimatedValue] = useState(0);
   const [showProfit, setShowProfit] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [animCapital, setAnimCapital] = useState(0);
+  const [animWithdraw, setAnimWithdraw] = useState(0);
+  const [revealedSites, setRevealedSites] = useState(0);
+  const coinParticles = useMemo(() => Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    width: 4 + Math.random() * 8,
+    left: Math.random() * 100,
+    topOffset: 10 + Math.random() * 20,
+    isGold: Math.random() > 0.5,
+    duration: 2 + Math.random() * 3,
+    delay: Math.random() * 2,
+    opacity: 0.6 + Math.random() * 0.4,
+  })), []);
   const [canSign, setCanSign] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const bgAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -1022,44 +1044,83 @@ function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSig
     };
   }, []);
 
+  const breakdownTimersRef = useRef<ReturnType<typeof setInterval>[]>([]);
+  const siteTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    return () => {
+      breakdownTimersRef.current.forEach(clearInterval);
+      siteTimersRef.current.forEach(clearTimeout);
+    };
+  }, []);
+
   const handleVideoEnd = useCallback(() => {
     if (hasTriggeredRef.current) return;
     hasTriggeredRef.current = true;
 
     setStage('result');
-    setShowProfit(true);
+    setShowBreakdown(true);
 
     if (videoRef.current) {
       videoRef.current.muted = true;
     }
 
-    const target = Math.round(profit);
-    const duration = 1500;
-    const steps = 60;
-    const stepDuration = duration / steps;
-    let current = 0;
-    const increment = target / steps;
-    timerRef.current = setInterval(() => {
-      current += increment;
-      if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
-        setAnimatedValue(target);
-        if (timerRef.current) clearInterval(timerRef.current);
-      } else {
-        setAnimatedValue(Math.round(current));
-      }
-    }, stepDuration);
+    const capTarget = Math.round(safeCapital);
+    const wdTarget = Math.round(totalWithdrawal);
+    const profTarget = Math.round(profit);
+    const animDuration = 1200;
+    const animSteps = 50;
+    const stepMs = animDuration / animSteps;
 
+    let capCur = 0, wdCur = 0;
+    const capInc = capTarget / animSteps;
+    const wdInc = wdTarget / animSteps;
+    const capTimer = setInterval(() => {
+      capCur += capInc;
+      if (capCur >= capTarget) { setAnimCapital(capTarget); clearInterval(capTimer); }
+      else setAnimCapital(Math.round(capCur));
+    }, stepMs);
+    const wdTimer = setInterval(() => {
+      wdCur += wdInc;
+      if (wdCur >= wdTarget) { setAnimWithdraw(wdTarget); clearInterval(wdTimer); }
+      else setAnimWithdraw(Math.round(wdCur));
+    }, stepMs);
+    breakdownTimersRef.current.push(capTimer, wdTimer);
+
+    siteWithdrawals.forEach((_, i) => {
+      const st = setTimeout(() => setRevealedSites(i + 1), 300 + i * 200);
+      siteTimersRef.current.push(st);
+    });
+
+    const profitDelay = animDuration + 400;
+    const showProfitTimer = setTimeout(() => {
+      setShowProfit(true);
+      let profCur = 0;
+      const profInc = profTarget / animSteps;
+      timerRef.current = setInterval(() => {
+        profCur += profInc;
+        if ((profInc >= 0 && profCur >= profTarget) || (profInc < 0 && profCur <= profTarget)) {
+          setAnimatedValue(profTarget);
+          if (timerRef.current) clearInterval(timerRef.current);
+        } else {
+          setAnimatedValue(Math.round(profCur));
+        }
+      }, stepMs);
+    }, profitDelay);
+    siteTimersRef.current.push(showProfitTimer);
+
+    const voiceDelay = animDuration + 400 + animDuration + 600;
     timeoutRef.current = setTimeout(() => {
       let voiceText: string;
       const pctText = `${Math.abs(profitPct).toFixed(1)} เปอร์เซ็นต์`;
       if (!isProfit) {
-        voiceText = `ภารกิจเสร็จสิ้นค่ะ ขาดทุน ${Math.abs(Math.round(profit))} บาท คิดเป็น ${pctText} สู้ใหม่รอบหน้านะคะ`;
+        voiceText = `ภารกิจเสร็จสิ้นค่ะ ทุนตั้งต้น ${Math.round(safeCapital)} บาท ถอนได้ ${Math.round(totalWithdrawal)} บาท ขาดทุน ${Math.abs(Math.round(profit))} บาท คิดเป็น ${pctText} สู้ใหม่รอบหน้านะคะ`;
       } else if (profit <= 5000) {
-        voiceText = `เย้! ภารกิจสำเร็จค่ะ กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} ดีใจด้วยนะคะ!`;
+        voiceText = `เย้! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${Math.round(safeCapital)} บาท ถอนได้ ${Math.round(totalWithdrawal)} บาท กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} ดีใจด้วยนะคะ!`;
       } else if (profit <= 20000) {
-        voiceText = `ว้าว! ภารกิจสำเร็จค่ะ กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} สุดยอดเลยค่ะ!`;
+        voiceText = `ว้าว! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${Math.round(safeCapital)} บาท ถอนได้ ${Math.round(totalWithdrawal)} บาท กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} สุดยอดเลยค่ะ!`;
       } else {
-        voiceText = `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} มหาศาลเลยค่ะ!`;
+        voiceText = `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${Math.round(safeCapital)} บาท ถอนได้ ${Math.round(totalWithdrawal)} บาท กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} มหาศาลเลยค่ะ!`;
       }
       const utterance = speakLocal(voiceText);
       utterance.onend = () => {
@@ -1079,8 +1140,8 @@ function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSig
           bgAudioRef.current = { pause: () => { try { osc.stop(); ctx.close(); } catch(_){} } } as any;
         } catch (_) {}
       };
-    }, 1800);
-  }, [profit, isProfit, profitPct, speakLocal]);
+    }, voiceDelay);
+  }, [profit, isProfit, profitPct, safeCapital, totalWithdrawal, safeSiteWithdrawals, speakLocal]);
 
   const handleSign = useCallback(() => {
     if (!signatureName.trim()) return;
@@ -1141,13 +1202,33 @@ function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSig
         style={{ opacity: 0.6, filter: 'brightness(0.5) saturate(1.3)' }}
       />
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.7) 100%)' }}>
-        {showProfit && (
+      {stage !== 'video' && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {coinParticles.map(p => (
+            <div
+              key={p.id}
+              className="absolute rounded-full"
+              style={{
+                width: `${p.width}px`,
+                height: `${p.width}px`,
+                left: `${p.left}%`,
+                top: `-${p.topOffset}px`,
+                background: `radial-gradient(circle, ${p.isGold ? '#F59E0B' : '#FBBF24'} 0%, transparent 70%)`,
+                animation: `coin-fall ${p.duration}s linear ${p.delay}s infinite`,
+                opacity: p.opacity,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="absolute inset-0 flex flex-col items-center justify-center overflow-y-auto py-6" style={{ background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.7) 100%)' }}>
+        {showBreakdown && (
           <>
             <div style={{ animation: 'calc-scale-in 0.6s cubic-bezier(0.34,1.56,0.64,1)' }}>
               {isProfit && (
                 <div className="mb-3" style={{ animation: 'bounce 1s infinite' }}>
-                  <Trophy className="h-16 w-16 mx-auto text-amber-400" style={{ filter: 'drop-shadow(0 0 25px rgba(251,191,36,0.7))' }} />
+                  <Trophy className="h-12 w-12 mx-auto text-amber-400" style={{ filter: 'drop-shadow(0 0 25px rgba(251,191,36,0.7))' }} />
                 </div>
               )}
               <p className="text-white/90 text-xl font-bold mb-1 tracking-wide text-center" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}>
@@ -1158,41 +1239,79 @@ function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSig
               </p>
             </div>
 
-            <div style={{ animation: 'calc-scale-in 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.3s both' }}>
-              <div className="rounded-lg px-8 py-4 text-center" style={{
-                background: 'rgba(0,0,0,0.5)',
-                border: `1px solid ${isProfit ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                boxShadow: isProfit ? '0 0 60px rgba(245,158,11,0.15)' : '0 0 60px rgba(239,68,68,0.15)',
+            <div className="w-80 max-w-[90vw]" style={{ animation: 'calc-scale-in 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.2s both' }}>
+              <div className="rounded-lg px-5 py-4" style={{
+                background: 'rgba(0,0,0,0.6)',
+                border: '1px solid rgba(245,158,11,0.2)',
                 backdropFilter: 'blur(10px)',
               }}>
-                <div
-                  className="font-black tabular-nums"
-                  style={{
-                    fontSize: 'clamp(2.5rem, 8vw, 5rem)',
-                    color: isProfit ? '#F59E0B' : '#EF4444',
-                    textShadow: isProfit
-                      ? '0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.2)'
-                      : '0 0 40px rgba(239,68,68,0.6)',
-                    animation: isProfit ? 'pulse-glow 2s ease-in-out infinite' : 'none',
-                  }}
-                  data-testid="text-celebration-profit"
-                >
-                  {isProfit ? "+" : ""}{animatedValue.toLocaleString()}
+                <div className="flex items-center justify-between mb-3 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="text-white/50 text-xs tracking-wider">ทุนตั้งต้น</span>
+                  <span className="text-white/90 text-lg font-bold tabular-nums" data-testid="text-capital">
+                    {animCapital.toLocaleString()} <span className="text-xs text-white/50">THB</span>
+                  </span>
                 </div>
-                <p className="text-white/80 text-lg font-bold tracking-wider">THB</p>
-                <div className="mt-2 px-4 py-1 rounded-full inline-block" style={{
-                  background: isProfit ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
-                  border: `1px solid ${isProfit ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                }}>
-                  <span className="text-sm font-bold" style={{ color: isProfit ? '#FBBF24' : '#F87171' }}>
-                    {isProfit ? "+" : ""}{profitPct.toFixed(1)}%
+
+                {safeSiteWithdrawals.slice(0, revealedSites).map((sw, i) => (
+                  <div key={i} className="flex items-center justify-between mb-1.5" style={{ animation: 'calc-scale-in 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
+                    <span className="text-amber-400/70 text-xs truncate mr-2" style={{ maxWidth: '120px' }}>
+                      {sw.name}
+                    </span>
+                    <span className="text-amber-300/90 text-sm font-medium tabular-nums" data-testid={`text-site-withdraw-${i}`}>
+                      {sw.amount.toLocaleString()} <span className="text-xs text-amber-400/50">THB</span>
+                    </span>
+                  </div>
+                ))}
+
+                <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="text-white/50 text-xs tracking-wider">ยอดถอนรวม</span>
+                  <span className="text-white/90 text-lg font-bold tabular-nums" data-testid="text-total-withdraw">
+                    {animWithdraw.toLocaleString()} <span className="text-xs text-white/50">THB</span>
                   </span>
                 </div>
               </div>
             </div>
 
+            {showProfit && (
+              <div className="mt-4" style={{ animation: 'calc-scale-in 0.6s cubic-bezier(0.34,1.56,0.64,1)' }}>
+                <div className="rounded-lg px-8 py-4 text-center" style={{
+                  background: 'rgba(0,0,0,0.5)',
+                  border: `1px solid ${isProfit ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                  boxShadow: isProfit ? '0 0 60px rgba(245,158,11,0.15)' : '0 0 60px rgba(239,68,68,0.15)',
+                  backdropFilter: 'blur(10px)',
+                }}>
+                  <p className="text-white/40 text-xs uppercase tracking-[0.2em] mb-1">
+                    {isProfit ? "กำไรสุทธิ" : "ขาดทุน"}
+                  </p>
+                  <div
+                    className="font-black tabular-nums"
+                    style={{
+                      fontSize: 'clamp(2rem, 7vw, 4rem)',
+                      color: isProfit ? '#F59E0B' : '#EF4444',
+                      textShadow: isProfit
+                        ? '0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.2)'
+                        : '0 0 40px rgba(239,68,68,0.6)',
+                      animation: isProfit ? 'pulse-glow 2s ease-in-out infinite' : 'none',
+                    }}
+                    data-testid="text-celebration-profit"
+                  >
+                    {isProfit ? "+" : ""}{animatedValue.toLocaleString()}
+                  </div>
+                  <p className="text-white/80 text-sm font-bold tracking-wider">THB</p>
+                  <div className="mt-2 px-4 py-1 rounded-full inline-block" style={{
+                    background: isProfit ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+                    border: `1px solid ${isProfit ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                  }}>
+                    <span className="text-sm font-bold" style={{ color: isProfit ? '#FBBF24' : '#F87171' }}>
+                      {isProfit ? "+" : ""}{profitPct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {canSign && stage !== 'signed' && (
-              <div className="mt-6 w-72" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              <div className="mt-5 w-72" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
                 <p className="text-amber-400/80 text-xs tracking-wider text-center mb-2">ลงชื่อเพื่อจบภารกิจ</p>
                 <div className="flex gap-2">
                   <input
@@ -1220,7 +1339,7 @@ function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSig
             )}
 
             {stage === 'signed' && (
-              <div className="mt-6 text-center" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              <div className="mt-5 text-center" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
                 <p className="text-amber-400 text-lg font-bold tracking-wider">
                   ลงชื่อโดย: {signatureName}
                 </p>
@@ -1229,7 +1348,7 @@ function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSig
             )}
 
             {!canSign && stage === 'result' && (
-              <p className="text-white/30 text-xs mt-6 tracking-wider" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
+              <p className="text-white/30 text-xs mt-5 tracking-wider" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
                 กรุณารอสักครู่...
               </p>
             )}
