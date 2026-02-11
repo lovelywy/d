@@ -354,7 +354,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background subtle-grid p-4 md:p-8">
+    <div className="min-h-screen bg-background subtle-grid px-4 py-1 md:px-8 md:py-2">
       {celebration?.show && (
         <CelebrationOverlay
           profit={celebration.profit}
@@ -397,8 +397,8 @@ export default function App() {
         />
       )}
 
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="relative py-1" data-testid="img-logo">
+      <div className="max-w-5xl mx-auto space-y-4">
+        <header className="relative py-0 -mb-2" data-testid="img-logo">
           <img src={dollcaraLogo} alt="Dollcara Mission by Vava" className="w-full h-auto object-contain" />
           <div className="absolute top-1 right-1">
             <Button variant="outline" size="icon" className="flex-shrink-0" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
@@ -732,7 +732,7 @@ export default function App() {
           </TabsContent>
         </Tabs>
 
-        <footer className="mt-4" data-testid="footer-banner">
+        <footer className="mt-1 -mb-2" data-testid="footer-banner">
           <img src={footerBanner} alt="Dollcara Footer" className="w-full h-auto object-contain" />
         </footer>
       </div>
