@@ -83,7 +83,8 @@ export default function App() {
     try { const s = localStorage.getItem("last-sites"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [activeTab, setActiveTab] = useState("calculator");
-  const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean } | null>(null);
+  const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean; profitPct: number } | null>(null);
+  const [signatureName, setSignatureName] = useState("");
   const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
   const [configName, setConfigName] = useState("");
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
@@ -185,7 +186,7 @@ export default function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
       setCalcResults([]);
-      setProfits({ min: 0, max: 0 });
+      setProfits({ min: 0, max: 0, minPct: 0, maxPct: 0 });
     },
   });
 
@@ -310,6 +311,7 @@ export default function App() {
   const confirmMissionComplete = async () => {
     const totalRemaining = trackerSites.reduce((sum, s) => sum + parseFloat(s.remainingBalance || "0"), 0);
     const finalProfit = totalRemaining - totalCapitalThb;
+    const profitPct = totalCapitalThb > 0 ? (finalProfit / totalCapitalThb) * 100 : 0;
 
     await addHistoryMutation.mutateAsync({
       initialThb: totalCapitalThb.toString(),
@@ -323,33 +325,29 @@ export default function App() {
     });
 
     const isProfit = finalProfit >= 0;
-    setCelebration({ show: true, profit: finalProfit, isProfit });
+    setCelebration({ show: true, profit: finalProfit, isProfit, profitPct });
+    setSignatureName("");
+  };
 
-    let voiceText: string;
-    if (!isProfit) {
-      voiceText = `ภารกิจเสร็จสิ้นค่ะ ขาดทุน ${Math.abs(Math.round(finalProfit))} บาท สู้ใหม่รอบหน้านะคะ`;
-    } else if (finalProfit <= 5000) {
-      voiceText = `เย้! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท ดีใจด้วยนะคะ!`;
-    } else if (finalProfit <= 20000) {
-      voiceText = `ว้าว! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท สุดยอดเลยค่ะ!`;
-    } else {
-      voiceText = `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ กำไร ${Math.round(finalProfit)} บาท มหาศาลเลยค่ะ!`;
-    }
-    speak(voiceText);
-
-    setTimeout(async () => {
-      setCelebration(null);
-      try {
-        await resetAllMutation.mutateAsync();
-      } catch (_) {}
-      setActiveTab("history");
-    }, 4000);
+  const handleCelebrationDismiss = async () => {
+    setCelebration(null);
+    try {
+      await resetAllMutation.mutateAsync();
+    } catch (_) {}
+    setActiveTab("history");
   };
 
   return (
     <div className="min-h-screen bg-background subtle-grid p-4 md:p-8">
       {celebration?.show && (
-        <CelebrationOverlay profit={celebration.profit} isProfit={celebration.isProfit} />
+        <CelebrationOverlay
+          profit={celebration.profit}
+          isProfit={celebration.isProfit}
+          profitPct={celebration.profitPct}
+          signatureName={signatureName}
+          setSignatureName={setSignatureName}
+          onDismiss={handleCelebrationDismiss}
+        />
       )}
       {calcAnimation?.show && (
         <CalcAnimationOverlay
@@ -416,7 +414,7 @@ export default function App() {
                 </div>
                 <div className="flex items-end gap-2">
                   <Button className="flex-1" onClick={() => calculateSplit(true)} data-testid="button-calculate">คำนวณ</Button>
-                  <Button variant="outline" onClick={() => { setCalcResults([]); setProfits({ min: 0, max: 0 }); }} data-testid="button-clear-calc">ล้าง</Button>
+                  <Button variant="outline" onClick={() => { setCalcResults([]); setProfits({ min: 0, max: 0, minPct: 0, maxPct: 0 }); }} data-testid="button-clear-calc">ล้าง</Button>
                 </div>
               </CardContent>
             </Card>
@@ -982,14 +980,58 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
   );
 }
 
-function CelebrationOverlay({ profit, isProfit }: { profit: number; isProfit: boolean }) {
+function CelebrationOverlay({ profit, isProfit, profitPct, signatureName, setSignatureName, onDismiss }: {
+  profit: number;
+  isProfit: boolean;
+  profitPct: number;
+  signatureName: string;
+  setSignatureName: (v: string) => void;
+  onDismiss: () => void;
+}) {
+  const [stage, setStage] = useState<'video' | 'result' | 'waiting' | 'signed'>('video');
   const [animatedValue, setAnimatedValue] = useState(0);
-  const [scale, setScale] = useState(0.3);
-  const [opacity, setOpacity] = useState(0);
+  const [showProfit, setShowProfit] = useState(false);
+  const [canSign, setCanSign] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
+  const cheerAudioRef = useRef<HTMLAudioElement | null>(null);
+  const hasTriggeredRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const speakLocal = useCallback((text: string) => {
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "th-TH";
+    u.rate = 0.9;
+    const voices = synth.getVoices();
+    const thVoice = voices.find(v => v.lang.startsWith("th"));
+    if (thVoice) u.voice = thVoice;
+    synth.speak(u);
+    return u;
+  }, []);
 
   useEffect(() => {
-    setOpacity(1);
-    setScale(1);
+    return () => {
+      window.speechSynthesis.cancel();
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
+      if (cheerAudioRef.current) { cheerAudioRef.current.pause(); cheerAudioRef.current = null; }
+    };
+  }, []);
+
+  const handleVideoEnd = useCallback(() => {
+    if (hasTriggeredRef.current) return;
+    hasTriggeredRef.current = true;
+
+    setStage('result');
+    setShowProfit(true);
+
+    if (videoRef.current) {
+      videoRef.current.muted = true;
+    }
 
     const target = Math.round(profit);
     const duration = 1500;
@@ -997,87 +1039,201 @@ function CelebrationOverlay({ profit, isProfit }: { profit: number; isProfit: bo
     const stepDuration = duration / steps;
     let current = 0;
     const increment = target / steps;
-
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       current += increment;
       if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
         setAnimatedValue(target);
-        clearInterval(timer);
+        if (timerRef.current) clearInterval(timerRef.current);
       } else {
         setAnimatedValue(Math.round(current));
       }
     }, stepDuration);
 
-    return () => clearInterval(timer);
-  }, [profit]);
+    timeoutRef.current = setTimeout(() => {
+      let voiceText: string;
+      const pctText = `${Math.abs(profitPct).toFixed(1)} เปอร์เซ็นต์`;
+      if (!isProfit) {
+        voiceText = `ภารกิจเสร็จสิ้นค่ะ ขาดทุน ${Math.abs(Math.round(profit))} บาท คิดเป็น ${pctText} สู้ใหม่รอบหน้านะคะ`;
+      } else if (profit <= 5000) {
+        voiceText = `เย้! ภารกิจสำเร็จค่ะ กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} ดีใจด้วยนะคะ!`;
+      } else if (profit <= 20000) {
+        voiceText = `ว้าว! ภารกิจสำเร็จค่ะ กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} สุดยอดเลยค่ะ!`;
+      } else {
+        voiceText = `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ กำไร ${Math.round(profit)} บาท คิดเป็น ${pctText} มหาศาลเลยค่ะ!`;
+      }
+      const utterance = speakLocal(voiceText);
+      utterance.onend = () => {
+        setStage('waiting');
+        setCanSign(true);
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, ctx.currentTime);
+          gain.gain.setValueAtTime(0.05, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 8);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 8);
+          bgAudioRef.current = { pause: () => { try { osc.stop(); ctx.close(); } catch(_){} } } as any;
+        } catch (_) {}
+      };
+    }, 1800);
+  }, [profit, isProfit, profitPct, speakLocal]);
+
+  const handleSign = useCallback(() => {
+    if (!signatureName.trim()) return;
+    setStage('signed');
+    if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
+
+    try {
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      for (let i = 0; i < 6; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800 + Math.random() * 400, now + i * 0.08);
+        gain.gain.setValueAtTime(0.06, now + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.15);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.15);
+      }
+      const noise = ctx.createOscillator();
+      const noiseGain = ctx.createGain();
+      noise.type = 'sawtooth';
+      noise.frequency.setValueAtTime(200, now + 0.5);
+      noiseGain.gain.setValueAtTime(0.03, now + 0.5);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 2);
+      noise.connect(noiseGain).connect(ctx.destination);
+      noise.start(now + 0.5);
+      noise.stop(now + 2);
+      cheerAudioRef.current = { pause: () => ctx.close() } as any;
+    } catch (_) {}
+
+    speakLocal("เฮ้! สุดยอดเลยค่ะ!");
+
+    setTimeout(() => {
+      if (cheerAudioRef.current) { cheerAudioRef.current.pause(); cheerAudioRef.current = null; }
+      onDismiss();
+    }, 3000);
+  }, [signatureName, speakLocal, onDismiss]);
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{
-        background: isProfit
-          ? 'radial-gradient(ellipse at center, rgba(38,90,55,0.9) 0%, rgba(10,14,20,0.98) 70%)'
-          : 'radial-gradient(ellipse at center, rgba(120,20,20,0.9) 0%, rgba(10,14,20,0.98) 70%)',
-        opacity,
-        transition: 'opacity 0.5s ease-out',
-      }}
-      data-testid="celebration-overlay"
-    >
-      <div
-        className="text-center"
-        style={{
-          transform: `scale(${scale})`,
-          transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    <div className="fixed inset-0 z-[9999]" data-testid="celebration-overlay">
+      <video
+        ref={videoRef}
+        src="/celebration.mp4"
+        className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
+        playsInline
+        loop
+        muted={stage !== 'video'}
+        onEnded={() => {}}
+        onTimeUpdate={() => {
+          if (videoRef.current && stage === 'video' && videoRef.current.currentTime >= 6) {
+            videoRef.current.muted = true;
+            handleVideoEnd();
+          }
         }}
-      >
-        {isProfit && (
-          <div className="text-6xl mb-4" style={{ animation: 'bounce 1s infinite' }}>
-            <Trophy className="h-20 w-20 mx-auto text-amber-400 drop-shadow-lg" style={{ filter: 'drop-shadow(0 0 20px rgba(251,191,36,0.6))' }} />
-          </div>
-        )}
-        <p className="text-white/90 text-2xl font-bold mb-2 tracking-wide" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.7)' }}>
-          {isProfit ? "MISSION COMPLETE" : "MISSION ENDED"}
-        </p>
-        <p className="text-white/60 text-sm uppercase tracking-[0.3em] mb-6">
-          {isProfit ? "profit secured" : "loss recorded"}
-        </p>
-        <div
-          className="font-black tabular-nums"
-          style={{
-            fontSize: 'clamp(3rem, 10vw, 6rem)',
-            color: isProfit ? '#F59E0B' : '#EF4444',
-            textShadow: isProfit
-              ? '0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.2), 0 4px 30px rgba(0,0,0,0.8)'
-              : '0 0 40px rgba(239,68,68,0.6), 0 4px 30px rgba(0,0,0,0.8)',
-            animation: isProfit ? 'pulse-glow 2s ease-in-out infinite' : 'none',
-          }}
-          data-testid="text-celebration-profit"
-        >
-          {isProfit ? "+" : ""}{animatedValue.toLocaleString()}
-        </div>
-        <p className="text-white/80 text-2xl font-bold mt-2 tracking-wider" style={{ textShadow: '0 2px 15px rgba(0,0,0,0.7)' }}>
-          THB
-        </p>
+        style={{ opacity: 0.6, filter: 'brightness(0.5) saturate(1.3)' }}
+      />
 
-        {isProfit && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {Array.from({ length: 25 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full"
-                style={{
-                  width: `${Math.random() * 6 + 2}px`,
-                  height: `${Math.random() * 6 + 2}px`,
-                  background: ['#F59E0B', '#D97706', '#FBBF24', '#10B981', '#6EE7B7'][i % 5],
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animation: `confetti-fall ${2 + Math.random() * 3}s linear infinite`,
-                  animationDelay: `${Math.random() * 2}s`,
-                  opacity: 0.7,
-                }}
-              />
-            ))}
-          </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.7) 100%)' }}>
+        {showProfit && (
+          <>
+            <div style={{ animation: 'calc-scale-in 0.6s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              {isProfit && (
+                <div className="mb-3" style={{ animation: 'bounce 1s infinite' }}>
+                  <Trophy className="h-16 w-16 mx-auto text-amber-400" style={{ filter: 'drop-shadow(0 0 25px rgba(251,191,36,0.7))' }} />
+                </div>
+              )}
+              <p className="text-white/90 text-xl font-bold mb-1 tracking-wide text-center" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}>
+                {isProfit ? "MISSION COMPLETE" : "MISSION ENDED"}
+              </p>
+              <p className="text-white/50 text-xs uppercase tracking-[0.3em] mb-4 text-center">
+                {isProfit ? "profit secured" : "loss recorded"}
+              </p>
+            </div>
+
+            <div style={{ animation: 'calc-scale-in 0.8s cubic-bezier(0.34,1.56,0.64,1) 0.3s both' }}>
+              <div className="rounded-lg px-8 py-4 text-center" style={{
+                background: 'rgba(0,0,0,0.5)',
+                border: `1px solid ${isProfit ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                boxShadow: isProfit ? '0 0 60px rgba(245,158,11,0.15)' : '0 0 60px rgba(239,68,68,0.15)',
+                backdropFilter: 'blur(10px)',
+              }}>
+                <div
+                  className="font-black tabular-nums"
+                  style={{
+                    fontSize: 'clamp(2.5rem, 8vw, 5rem)',
+                    color: isProfit ? '#F59E0B' : '#EF4444',
+                    textShadow: isProfit
+                      ? '0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.2)'
+                      : '0 0 40px rgba(239,68,68,0.6)',
+                    animation: isProfit ? 'pulse-glow 2s ease-in-out infinite' : 'none',
+                  }}
+                  data-testid="text-celebration-profit"
+                >
+                  {isProfit ? "+" : ""}{animatedValue.toLocaleString()}
+                </div>
+                <p className="text-white/80 text-lg font-bold tracking-wider">THB</p>
+                <div className="mt-2 px-4 py-1 rounded-full inline-block" style={{
+                  background: isProfit ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+                  border: `1px solid ${isProfit ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                }}>
+                  <span className="text-sm font-bold" style={{ color: isProfit ? '#FBBF24' : '#F87171' }}>
+                    {isProfit ? "+" : ""}{profitPct.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {canSign && stage !== 'signed' && (
+              <div className="mt-6 w-72" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
+                <p className="text-amber-400/80 text-xs tracking-wider text-center mb-2">ลงชื่อเพื่อจบภารกิจ</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={signatureName}
+                    onChange={(e) => setSignatureName(e.target.value)}
+                    placeholder="พิมพ์ชื่อของคุณ..."
+                    className="flex-1 bg-black/50 border border-amber-400/30 rounded-md px-3 py-2 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-amber-400/60"
+                    data-testid="input-signature"
+                  />
+                  <button
+                    onClick={handleSign}
+                    disabled={!signatureName.trim()}
+                    className="px-4 py-2 rounded-md text-sm font-bold disabled:opacity-30"
+                    style={{
+                      background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                      color: '#000',
+                    }}
+                    data-testid="button-sign-mission"
+                  >
+                    ยืนยัน
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {stage === 'signed' && (
+              <div className="mt-6 text-center" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
+                <p className="text-amber-400 text-lg font-bold tracking-wider">
+                  ลงชื่อโดย: {signatureName}
+                </p>
+                <p className="text-white/40 text-xs mt-1">กำลังบันทึก...</p>
+              </div>
+            )}
+
+            {!canSign && stage === 'result' && (
+              <p className="text-white/30 text-xs mt-6 tracking-wider" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
+                กรุณารอสักครู่...
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
