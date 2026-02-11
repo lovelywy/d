@@ -425,7 +425,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
-                  <CardTitle>รายชื่อเว็บสำหรับใช้ทำกำไร</CardTitle>
+                  <CardTitle>🧑‍💻Web 🌐 Secret©️</CardTitle>
                   <div className="flex gap-2">
                     <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
                       <DialogTrigger asChild><Button size="sm" variant="outline" data-testid="button-manage-sites"><Settings className="mr-2 h-4 w-4" /> จัดการเว็บ</Button></DialogTrigger>
