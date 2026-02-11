@@ -78,7 +78,7 @@ export default function App() {
     try { return localStorage.getItem("last-rate") || "35.5"; } catch { return "35.5"; }
   });
   const [calcResults, setCalcResults] = useState<any[]>([]);
-  const [profits, setProfits] = useState({ min: 0, max: 0 });
+  const [profits, setProfits] = useState({ min: 0, max: 0, minPct: 0, maxPct: 0 });
   const [selectedSiteIds, setSelectedSiteIds] = useState<number[]>(() => {
     try { const s = localStorage.getItem("last-sites"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
@@ -87,7 +87,7 @@ export default function App() {
   const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
   const [configName, setConfigName] = useState("");
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
-  const [calcAnimation, setCalcAnimation] = useState<{ show: boolean; sites: string[]; results: any[] | null; profits: { min: number; max: number } | null; numSites: number } | null>(null);
+  const [calcAnimation, setCalcAnimation] = useState<{ show: boolean; sites: string[]; results: any[] | null; profits: { min: number; max: number; minPct: number; maxPct: number } | null; numSites: number } | null>(null);
 
   const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
@@ -248,21 +248,23 @@ export default function App() {
     const Y = A + B;
     const minProfitValue = Y - totalCapitalThb;
     const maxProfitValue = totalCredits - totalCapitalThb;
+    const minPct = totalCapitalThb > 0 ? (minProfitValue / totalCapitalThb) * 100 : 0;
+    const maxPct = totalCapitalThb > 0 ? (maxProfitValue / totalCapitalThb) * 100 : 0;
 
     if (withVoice) {
       setCalcAnimation({
         show: true,
         sites: selectedSites.map(s => s.name),
         results,
-        profits: { min: minProfitValue, max: maxProfitValue },
+        profits: { min: minProfitValue, max: maxProfitValue, minPct, maxPct },
         numSites: selectedSites.length,
       });
 
       setCalcResults(results);
-      setProfits({ min: minProfitValue, max: maxProfitValue });
+      setProfits({ min: minProfitValue, max: maxProfitValue, minPct, maxPct });
     } else {
       setCalcResults(results);
-      setProfits({ min: minProfitValue, max: maxProfitValue });
+      setProfits({ min: minProfitValue, max: maxProfitValue, minPct, maxPct });
     }
   };
 
@@ -356,7 +358,7 @@ export default function App() {
           profits={calcAnimation.profits}
           onVideoEnd={() => {
             if (calcAnimation?.profits) {
-              speak(`วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อยต้องได้ ${Math.round(calcAnimation.profits.min)} บาท สูงสุดอาจจะได้ถึง ${Math.round(calcAnimation.profits.max)} บาท เลยนะคะ`);
+              speak(`วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรอย่างน้อย ${calcAnimation.profits.minPct.toFixed(1)} เปอร์เซ็นต์ สูงสุดอาจจะได้ถึง ${calcAnimation.profits.maxPct.toFixed(1)} เปอร์เซ็นต์ เลยนะคะ`);
             }
           }}
           onDismiss={() => {
@@ -595,11 +597,11 @@ export default function App() {
                     <div className="pt-4 border-t space-y-2">
                       <div className="flex flex-wrap justify-between gap-1 font-bold">
                         <span>กำไรขั้นต่ำคาดการณ์:</span>
-                        <span className={profits.min >= 0 ? "text-emerald-400" : "text-red-400"} data-testid="text-profit-min">{Math.round(profits.min).toLocaleString()} บาท</span>
+                        <span className={profits.min >= 0 ? "text-emerald-400" : "text-red-400"} data-testid="text-profit-min">{profits.minPct.toFixed(1)}% ({Math.round(profits.min).toLocaleString()} บาท)</span>
                       </div>
                       <div className="flex flex-wrap justify-between gap-1 font-bold">
                         <span>กำไรสูงสุดคาดการณ์:</span>
-                        <span className="text-emerald-400" data-testid="text-profit-max">{Math.round(profits.max).toLocaleString()} บาท</span>
+                        <span className="text-emerald-400" data-testid="text-profit-max">{profits.maxPct.toFixed(1)}% ({Math.round(profits.max).toLocaleString()} บาท)</span>
                       </div>
                     </div>
                     <Button className="w-full mt-4" onClick={saveTargets} data-testid="button-save-targets">บันทึกเป้าหมายไปที่ Tracker</Button>
@@ -711,7 +713,7 @@ export default function App() {
 function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismiss }: {
   siteNames: string[];
   results: any[] | null;
-  profits: { min: number; max: number } | null;
+  profits: { min: number; max: number; minPct: number; maxPct: number } | null;
   onVideoEnd: () => void;
   onDismiss: () => void;
 }) {
@@ -931,9 +933,9 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
                 <p className="text-amber-400/70 text-xs tracking-[0.15em] mb-1">กำไรคาดการณ์ที่จะได้</p>
                 <p className="font-black text-2xl md:text-3xl text-amber-400"
                   style={{ textShadow: '0 0 30px rgba(245,158,11,0.5)' }}>
-                  {Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()}
+                  {profits.minPct.toFixed(1)}% - {profits.maxPct.toFixed(1)}%
                 </p>
-                <p className="text-amber-400/80 text-sm font-bold mt-0.5">THB</p>
+                <p className="text-amber-400/80 text-xs mt-0.5">({Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()} THB)</p>
               </div>
             </div>
           )}
