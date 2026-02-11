@@ -32,6 +32,7 @@ import kc9Logo from "@assets/logo20250513054304358_(1)_1770746907160.png";
 import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
 import m98Logo from "@assets/l20220608030750449_1770746907302.png";
 import dollcaraLogo from "@assets/1770782231327_1770782391291.gif";
+import footerBanner from "@assets/1770786318358_1770786389453.gif";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -699,9 +700,8 @@ export default function App() {
           </TabsContent>
         </Tabs>
 
-        <footer className="text-center py-6 space-y-1 border-t border-border/30 mt-8">
-          <p className="text-xs text-muted-foreground" data-testid="text-credit-creative">Creative by Studio Billy Here is Melody</p>
-          <p className="text-xs text-muted-foreground" data-testid="text-credit-director">Director and Producer Published by Niwat Raksanit</p>
+        <footer className="mt-4" data-testid="footer-banner">
+          <img src={footerBanner} alt="Dollcara Footer" className="w-full h-auto object-contain" />
         </footer>
       </div>
     </div>
