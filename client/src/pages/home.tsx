@@ -55,6 +55,31 @@ const SITE_LOGOS: Record<string, string> = {
   "m98": m98Logo,
 };
 
+function triggerHaptic(pattern: 'light' | 'medium' | 'heavy' | 'nav' | number[]) {
+  try {
+    if (!navigator.vibrate) return;
+    if (pattern === 'light') navigator.vibrate(15);
+    else if (pattern === 'nav') navigator.vibrate(10);
+    else if (pattern === 'medium') navigator.vibrate(40);
+    else if (pattern === 'heavy') navigator.vibrate(80);
+    else if (Array.isArray(pattern)) navigator.vibrate(pattern);
+  } catch (_) {}
+}
+
+function profitHaptic(profit: number, isProfit: boolean) {
+  if (!isProfit || profit <= 0) {
+    triggerHaptic([30]);
+  } else if (profit < 1000) {
+    triggerHaptic([25, 60, 25]);
+  } else if (profit < 5000) {
+    triggerHaptic([200]);
+  } else if (profit < 10000) {
+    triggerHaptic([200, 80, 200]);
+  } else {
+    triggerHaptic([300, 80, 300, 80, 300]);
+  }
+}
+
 function getSiteLogo(name: string): string | null {
   const key = name.toLowerCase().replace(/\s+/g, "");
   for (const [k, v] of Object.entries(SITE_LOGOS)) {
@@ -315,6 +340,7 @@ export default function App() {
 
     const isProfit = finalProfit >= 0;
     const siteWithdrawals = trackerSites.map(s => ({ name: s.name, amount: parseFloat(s.remainingBalance || "0") }));
+    profitHaptic(finalProfit, isProfit);
     setCelebration({
       show: true,
       profit: finalProfit,
@@ -354,7 +380,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background subtle-grid px-4 py-1 md:px-8 md:py-2">
+    <div className="min-h-screen bg-background subtle-grid px-4 py-1 pb-20 md:px-8 md:py-2 md:pb-20">
       {celebration?.show && (
         <CelebrationOverlay
           profit={celebration.profit}
@@ -397,7 +423,7 @@ export default function App() {
         />
       )}
 
-      <div className="max-w-5xl mx-auto space-y-4">
+      <div className="max-w-5xl mx-auto space-y-2">
         <header className="relative py-0 -mb-2 overflow-hidden" data-testid="img-logo" style={{ maxHeight: '85%' }}>
           <img src={dollcaraLogo} alt="Dollcara Mission by Vava" className="w-full object-cover" style={{ transform: 'scaleY(0.85)', transformOrigin: 'center' }} />
           <div className="absolute top-1 right-1">
@@ -408,17 +434,12 @@ export default function App() {
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="calculator" data-testid="tab-calculator"><Calculator className="mr-2 h-4 w-4" /> Calculator</TabsTrigger>
-            <TabsTrigger value="tracker" data-testid="tab-tracker"><TrendingUp className="mr-2 h-4 w-4" /> Tracker</TabsTrigger>
-            <TabsTrigger value="history" data-testid="tab-history"><HistoryIcon className="mr-2 h-4 w-4" /> History</TabsTrigger>
-          </TabsList>
 
           {/* ===== CALCULATOR TAB ===== */}
-          <TabsContent value="calculator" className="space-y-4">
+          <TabsContent value="calculator" className="space-y-3">
             <Card>
               <CardHeader><CardTitle>ทุนและอัตราแลกเปลี่ยน</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-0">
                 <div className="space-y-2">
                   <Label>จำนวน USDT ทั้งหมด</Label>
                   <Input data-testid="input-total-usdt" type="number" value={totalUsdtInput} onChange={e => setTotalUsdtInput(e.target.value)} />
@@ -432,16 +453,16 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button className="flex-1" onClick={() => calculateSplit(true)} data-testid="button-calculate">คำนวณ</Button>
+                  <Button className="flex-1" onClick={() => { triggerHaptic('medium'); calculateSplit(true); }} data-testid="button-calculate">คำนวณ</Button>
                   <Button variant="outline" onClick={() => { setCalcResults([]); setProfits({ min: 0, max: 0, minPct: 0, maxPct: 0 }); }} data-testid="button-clear-calc">ล้าง</Button>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-2">
-                  <CardTitle>🧑‍💻Web 🌐 Secret©️</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <CardTitle className="flex items-center gap-1.5"><Settings className="h-4 w-4" /> Web Secret</CardTitle>
                   <div className="flex gap-2">
                     <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
                       <DialogTrigger asChild><Button size="sm" variant="outline" data-testid="button-manage-sites"><Settings className="mr-2 h-4 w-4" /> จัดการเว็บ</Button></DialogTrigger>
@@ -460,7 +481,7 @@ export default function App() {
                     </Dialog>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2 pt-0">
                   {selectedSiteIds.length === 0 ? (
                     <p className="text-center text-sm text-muted-foreground py-4">กดปุ่ม + เพื่อเพิ่มเว็บ</p>
                   ) : (
@@ -606,10 +627,10 @@ export default function App() {
               {calcResults.length > 0 && (
                 <Card className="border-primary/20 gold-glow">
                   <CardHeader><CardTitle>ผลลัพธ์ (ยอดที่ต้องฝาก)</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
+                  <CardContent className="space-y-3 pt-0">
+                    <div className="space-y-1.5">
                       {calcResults.map(res => (
-                        <div key={res.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0" data-testid={`result-site-${res.id}`}>
+                        <div key={res.id} className="flex justify-between items-center text-sm border-b pb-1.5 last:border-0" data-testid={`result-site-${res.id}`}>
                           <span className="font-medium flex items-center gap-2"><SiteLogo name={res.name} className="h-6 w-auto max-w-[70px]" />{res.name}</span>
                           <div className="flex gap-4">
                             <div className="text-right">
@@ -624,7 +645,7 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                    <div className="pt-4 border-t space-y-2">
+                    <div className="pt-2 border-t space-y-1">
                       <div className="flex flex-wrap justify-between gap-1 font-bold">
                         <span>กำไรขั้นต่ำคาดการณ์:</span>
                         <span className={profits.min >= 0 ? "text-emerald-400" : "text-red-400"} data-testid="text-profit-min">{profits.minPct.toFixed(1)}% ({Math.round(profits.min).toLocaleString()} บาท)</span>
@@ -634,7 +655,7 @@ export default function App() {
                         <span className="text-emerald-400" data-testid="text-profit-max">{profits.maxPct.toFixed(1)}% ({Math.round(profits.max).toLocaleString()} บาท)</span>
                       </div>
                     </div>
-                    <Button className="w-full mt-4" onClick={saveTargets} data-testid="button-save-targets">บันทึกเป้าหมายไปที่ Tracker</Button>
+                    <Button className="w-full mt-2" onClick={() => { triggerHaptic('heavy'); saveTargets(); }} data-testid="button-save-targets">บันทึกเป้าหมายไปที่ Tracker</Button>
                   </CardContent>
                 </Card>
               )}
@@ -642,7 +663,7 @@ export default function App() {
           </TabsContent>
 
           {/* ===== TRACKER TAB ===== */}
-          <TabsContent value="tracker" className="space-y-4">
+          <TabsContent value="tracker" className="space-y-3">
             <div className="flex flex-wrap justify-between items-center gap-2">
               <h2 className="text-xl font-bold">Turnover Tracker</h2>
               <Button variant="destructive" onClick={() => resetAllMutation.mutate()} data-testid="button-reset-tracker">
@@ -652,13 +673,13 @@ export default function App() {
 
             {trackerSites.length === 0 && (
               <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
+                <CardContent className="py-5 text-center text-muted-foreground">
                   ยังไม่มีเป้าหมาย กรุณาคำนวณและบันทึกจากหน้า Calculator ก่อน
                 </CardContent>
               </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {trackerSites.map(site => (
                 <TrackerCard key={site.id} site={site} onUpdate={updateBet} onBalanceSave={saveBalance} />
               ))}
@@ -666,7 +687,7 @@ export default function App() {
 
             {allSitesCompleted && (
               <Card className="border-green-500/50">
-                <CardContent className="py-6 space-y-4">
+                <CardContent className="py-4 space-y-3">
                   <div className="text-center">
                     <Trophy className="h-10 w-10 mx-auto text-green-600 mb-2" />
                     <h3 className="text-lg font-bold">ครบเทิร์นทุกเว็บแล้ว!</h3>
@@ -737,25 +758,42 @@ export default function App() {
         </footer>
       </div>
 
-      {activeTab !== "calculator" && (
-        <Button
-          size="icon"
-          className="fixed bottom-6 right-6 z-[99999] rounded-full shadow-lg"
-          style={{
-            background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-            color: '#000',
-            width: '48px',
-            height: '48px',
-          }}
-          onClick={() => {
-            setActiveTab("calculator");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          data-testid="button-float-home"
-        >
-          <HomeIcon className="h-5 w-5" />
-        </Button>
-      )}
+      <nav className="fixed bottom-0 left-0 right-0 z-[99999] border-t" style={{
+        background: 'linear-gradient(to top, hsl(var(--background)), hsl(var(--background) / 0.95))',
+        backdropFilter: 'blur(12px)',
+        borderColor: 'hsl(var(--border))',
+      }} data-testid="nav-bottom">
+        <div className="max-w-5xl mx-auto grid grid-cols-3 h-14">
+          {[
+            { key: 'calculator', label: 'Calculator', icon: Calculator },
+            { key: 'tracker', label: 'Tracker', icon: TrendingUp },
+            { key: 'history', label: 'History', icon: HistoryIcon },
+          ].map(item => {
+            const isActive = activeTab === item.key;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                className="relative flex flex-col items-center justify-center gap-0.5 transition-colors"
+                style={{
+                  color: isActive ? '#F59E0B' : 'hsl(var(--muted-foreground))',
+                  background: 'transparent',
+                }}
+                onClick={() => {
+                  triggerHaptic('nav');
+                  setActiveTab(item.key);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                data-testid={`nav-${item.key}`}
+              >
+                <Icon className="h-5 w-5" style={isActive ? { filter: 'drop-shadow(0 0 6px rgba(245,158,11,0.5))' } : {}} />
+                <span className="text-[10px] font-medium">{item.label}</span>
+                {isActive && <div className="absolute bottom-0 h-0.5 w-10 rounded-full" style={{ background: '#F59E0B' }} />}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
@@ -1599,14 +1637,14 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
 
   return (
     <Card className={isComplete ? "border-emerald-500/30 gold-glow" : ""} data-testid={`card-tracker-${site.id}`}>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <SiteLogo name={site.name} className="h-8 w-auto max-w-[80px]" />
+      <CardHeader className="pb-1 pt-3 flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <SiteLogo name={site.name} className="h-7 w-auto max-w-[70px]" />
           {site.name}
         </CardTitle>
         {isComplete && <Trophy className="h-5 w-5 text-amber-400" />}
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 pt-1">
         <div className="space-y-1">
           <div className="flex flex-wrap justify-between gap-1 text-xs"><span>ความคืบหน้า</span><span>{Math.round(current).toLocaleString()} / {Math.round(target).toLocaleString()} บาท</span></div>
           <Progress value={progress} />
@@ -1631,7 +1669,7 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
         ) : (
           <div className="flex gap-2">
             <Input data-testid={`input-bet-${site.id}`} type="number" placeholder="ยอดเดิมพัน" value={bet} onChange={e => setBet(e.target.value)} />
-            <Button onClick={() => { onUpdate(site, bet); setBet(""); }} data-testid={`button-update-bet-${site.id}`}>อัปเดต</Button>
+            <Button onClick={() => { triggerHaptic('light'); onUpdate(site, bet); setBet(""); }} data-testid={`button-update-bet-${site.id}`}>อัปเดต</Button>
           </div>
         )}
       </CardContent>
