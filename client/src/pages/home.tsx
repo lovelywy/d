@@ -83,7 +83,7 @@ export default function App() {
     try { const s = localStorage.getItem("last-sites"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [activeTab, setActiveTab] = useState("calculator");
-  const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean; profitPct: number; capitalThb: number; siteWithdrawals: { name: string; amount: number }[] } | null>(null);
+  const [celebration, setCelebration] = useState<{ show: boolean; profit: number; isProfit: boolean; profitPct: number; capitalThb: number; siteWithdrawals: { name: string; amount: number }[]; pendingHistory?: any } | null>(null);
   const [signatureName, setSignatureName] = useState("");
   const [savedConfigs, setSavedConfigs] = useState<{ name: string; siteIds: number[] }[]>([]);
   const [configName, setConfigName] = useState("");
@@ -313,28 +313,43 @@ export default function App() {
     const finalProfit = totalRemaining - totalCapitalThb;
     const profitPct = totalCapitalThb > 0 ? (finalProfit / totalCapitalThb) * 100 : 0;
 
-    await addHistoryMutation.mutateAsync({
-      initialThb: totalCapitalThb.toString(),
-      totalUsdt: totalUsdtInput,
-      profit: finalProfit.toString(),
-      details: {
-        sites: trackerSites.map(s => ({ name: s.name, balance: s.remainingBalance, target: s.targetTurnover })),
-        exchangeRate,
-        timestamp: new Date().toISOString()
-      }
-    });
-
     const isProfit = finalProfit >= 0;
     const siteWithdrawals = trackerSites.map(s => ({ name: s.name, amount: parseFloat(s.remainingBalance || "0") }));
-    setCelebration({ show: true, profit: finalProfit, isProfit, profitPct, capitalThb: totalCapitalThb, siteWithdrawals });
+    setCelebration({
+      show: true,
+      profit: finalProfit,
+      isProfit,
+      profitPct,
+      capitalThb: totalCapitalThb,
+      siteWithdrawals,
+      pendingHistory: {
+        initialThb: totalCapitalThb.toString(),
+        totalUsdt: totalUsdtInput,
+        profit: finalProfit.toString(),
+        details: {
+          sites: trackerSites.map(s => ({ name: s.name, balance: s.remainingBalance, target: s.targetTurnover })),
+          exchangeRate,
+          timestamp: new Date().toISOString()
+        }
+      }
+    });
     setSignatureName("");
   };
 
   const handleCelebrationDismiss = async () => {
+    if (celebration?.pendingHistory) {
+      try {
+        await addHistoryMutation.mutateAsync({
+          ...celebration.pendingHistory,
+          userName: signatureName.trim() || "Unknown",
+        });
+      } catch (_) {}
+    }
     setCelebration(null);
     try {
       await resetAllMutation.mutateAsync();
     } catch (_) {}
+    setSelectedSiteIds([]);
     setActiveTab("history");
   };
 
@@ -1020,19 +1035,22 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
   const safeSiteWithdrawals = useMemo(() => siteWithdrawals.map(sw => ({ name: sw.name, amount: isNaN(sw.amount) ? 0 : sw.amount })), [siteWithdrawals]);
   const totalWithdrawal = Math.round(safeSiteWithdrawals.reduce((s, w) => s + w.amount, 0));
 
-  const [stage, setStage] = useState<'playing' | 'chill' | 'sign' | 'done'>('playing');
-  const [canTap, setCanTap] = useState(false);
+  const [stage, setStage] = useState<'announcing' | 'showtime' | 'glitch' | 'name' | 'done'>('announcing');
+  const [typedDigits, setTypedDigits] = useState<string[]>([]);
+  const [showPctBadge, setShowPctBadge] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hasTriggeredRef = useRef(false);
   const bgAudioRef = useRef<{ pause: () => void } | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const coinParticles = useMemo(() => Array.from({ length: 30 }, (_, i) => ({
+  const profitStr = `${isProfit ? "+" : ""}${safeProfitVal.toLocaleString()}`;
+
+  const coinParticles = useMemo(() => Array.from({ length: 40 }, (_, i) => ({
     id: i,
     width: 4 + Math.random() * 8,
     left: Math.random() * 100,
     topOffset: 10 + Math.random() * 20,
-    isGold: Math.random() > 0.5,
+    isGold: Math.random() > 0.4,
     duration: 2 + Math.random() * 3,
     delay: Math.random() * 2,
     opacity: 0.6 + Math.random() * 0.4,
@@ -1056,115 +1074,144 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
 
     let ended = false;
     const finish = () => { if (!ended) { ended = true; onDone?.(); } };
-    u.onend = finish;
-    u.onerror = finish;
 
     const charCount = text.length;
     const estimatedMs = Math.max(3000, charCount * 120);
     const fallback = setTimeout(finish, estimatedMs);
-    const origFinish = finish;
-    u.onend = () => { clearTimeout(fallback); origFinish(); };
-    u.onerror = () => { clearTimeout(fallback); origFinish(); };
+    timersRef.current.push(fallback);
 
     const keepAlive = setInterval(() => {
       if (!synth.speaking) { clearInterval(keepAlive); return; }
       synth.pause();
       synth.resume();
     }, 5000);
-    const origEnd = u.onend;
-    u.onend = () => { clearInterval(keepAlive); clearTimeout(fallback); if (!ended) { ended = true; onDone?.(); } };
-    u.onerror = () => { clearInterval(keepAlive); clearTimeout(fallback); if (!ended) { ended = true; onDone?.(); } };
+
+    u.onend = () => { clearInterval(keepAlive); clearTimeout(fallback); finish(); };
+    u.onerror = () => { clearInterval(keepAlive); clearTimeout(fallback); finish(); };
 
     synth.speak(u);
   }, [cachedVoice]);
 
-  const startChillAudio = useCallback(() => {
+  const playKeyClick = useCallback(() => {
     try {
-      const ctx = new AudioContext();
+      const ctx = audioCtxRef.current || new AudioContext();
+      audioCtxRef.current = ctx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const freq = 800 + Math.random() * 600;
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.05);
+
+      const noise = ctx.createBufferSource();
+      const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let j = 0; j < output.length; j++) output[j] = (Math.random() * 2 - 1) * 0.3;
+      noise.buffer = noiseBuffer;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.06, ctx.currentTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+      noise.connect(noiseGain).connect(ctx.destination);
+      noise.start();
+    } catch (_) {}
+  }, []);
+
+  const startBgMusic = useCallback(() => {
+    try {
+      const ctx = audioCtxRef.current || new AudioContext();
+      audioCtxRef.current = ctx;
       let stopped = false;
 
       const createLoop = () => {
         if (stopped) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(280, ctx.currentTime);
-        gain.gain.setValueAtTime(0.04, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.015, ctx.currentTime + 10);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 10);
-
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(420, ctx.currentTime);
-        gain2.gain.setValueAtTime(0.02, ctx.currentTime);
-        gain2.gain.exponentialRampToValueAtTime(0.008, ctx.currentTime + 10);
-        osc2.connect(gain2).connect(ctx.destination);
-        osc2.start();
-        osc2.stop(ctx.currentTime + 10);
-
-        osc.onended = () => { if (!stopped) createLoop(); };
+        const notes = [220, 261, 293, 329, 349, 392];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 1.5);
+          gain.gain.setValueAtTime(0, ctx.currentTime + i * 1.5);
+          gain.gain.linearRampToValueAtTime(0.025, ctx.currentTime + i * 1.5 + 0.3);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + i * 1.5 + 1.4);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(ctx.currentTime + i * 1.5);
+          osc.stop(ctx.currentTime + i * 1.5 + 1.5);
+          if (i === notes.length - 1) {
+            osc.onended = () => { if (!stopped) createLoop(); };
+          }
+        });
       };
       createLoop();
 
-      bgAudioRef.current = { pause: () => { stopped = true; try { ctx.close(); } catch(_){} } };
+      bgAudioRef.current = { pause: () => { stopped = true; } };
     } catch (_) {}
   }, []);
 
-  const handleVideoFirstLoop = useCallback(() => {
-    if (hasTriggeredRef.current) return;
-    hasTriggeredRef.current = true;
-
+  const startShowtime = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.muted = true;
       videoRef.current.loop = true;
       videoRef.current.play().catch(() => {});
     }
 
-    let voiceText: string;
-    const pctText = `${Math.abs(profitPct).toFixed(1)} เปอร์เซ็นต์`;
-    if (!isProfit) {
-      voiceText = `ภารกิจเสร็จสิ้นค่ะ ทุนตั้งต้น ${safeCapital} บาท ถอนได้ ${totalWithdrawal} บาท ขาดทุน ${Math.abs(safeProfitVal)} บาท คิดเป็น ${pctText} สู้ใหม่รอบหน้านะคะ`;
-    } else if (safeProfitVal <= 5000) {
-      voiceText = `เย้! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${safeCapital} บาท ถอนได้ ${totalWithdrawal} บาท กำไร ${safeProfitVal} บาท คิดเป็น ${pctText} ดีใจด้วยนะคะ!`;
-    } else if (safeProfitVal <= 20000) {
-      voiceText = `ว้าว! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${safeCapital} บาท ถอนได้ ${totalWithdrawal} บาท กำไร ${safeProfitVal} บาท คิดเป็น ${pctText} สุดยอดเลยค่ะ!`;
-    } else {
-      voiceText = `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${safeCapital} บาท ถอนได้ ${totalWithdrawal} บาท กำไร ${safeProfitVal} บาท คิดเป็น ${pctText} มหาศาลเลยค่ะ!`;
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume().catch(() => {});
     }
+    startBgMusic();
+    setStage('showtime');
 
-    speakWithCallback(voiceText, () => {
-      setStage('chill');
-      setCanTap(true);
-      startChillAudio();
+    const digits = profitStr.split('');
+    const baseDelay = 120;
+    digits.forEach((_, i) => {
+      const t = setTimeout(() => {
+        playKeyClick();
+        setTypedDigits(prev => [...prev, digits[i]]);
+      }, i * baseDelay);
+      timersRef.current.push(t);
     });
-  }, [isProfit, safeProfitVal, safeCapital, totalWithdrawal, profitPct, speakWithCallback, startChillAudio]);
+
+    const totalTypeTime = digits.length * baseDelay + 500;
+    const pctTimer = setTimeout(() => setShowPctBadge(true), totalTypeTime);
+    timersRef.current.push(pctTimer);
+
+    const glitchTimer = setTimeout(() => setStage('glitch'), totalTypeTime + 1500);
+    timersRef.current.push(glitchTimer);
+  }, [profitStr, playKeyClick, startBgMusic]);
+
+  const startShowtimeRef = useRef(startShowtime);
+  startShowtimeRef.current = startShowtime;
+  const speakRef = useRef(speakWithCallback);
+  speakRef.current = speakWithCallback;
 
   useEffect(() => {
-    const fallback = setTimeout(() => {
-      if (!hasTriggeredRef.current) handleVideoFirstLoop();
-    }, 8000);
+    const voiceText = buildVoiceText(isProfit, safeProfitVal, safeCapital, totalWithdrawal, profitPct);
+    speakRef.current(voiceText, () => {
+      startShowtimeRef.current();
+    });
+
     return () => {
-      clearTimeout(fallback);
       window.speechSynthesis?.cancel();
       timersRef.current.forEach(clearTimeout);
       if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
+      if (audioCtxRef.current) { try { audioCtxRef.current.close(); } catch (_) {} }
     };
-  }, [handleVideoFirstLoop]);
+  }, [isProfit, safeProfitVal, safeCapital, totalWithdrawal, profitPct]);
 
-  const handleTapScreen = useCallback(() => {
-    if (!canTap || stage !== 'chill') return;
-    if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
-    setStage('sign');
-  }, [canTap, stage]);
+  const handleScreenTap = useCallback(() => {
+    if (stage !== 'glitch') return;
+    setStage('name');
+  }, [stage]);
 
   const handleSign = useCallback(() => {
     if (!signatureName.trim()) return;
     setStage('done');
-    speakWithCallback("เฮ้! สุดยอดเลยค่ะ!", () => {
-      const t = setTimeout(() => onDismiss(), 800);
+    if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
+    speakWithCallback("บันทึกเรียบร้อยค่ะ!", () => {
+      const t = setTimeout(() => onDismiss(), 600);
       timersRef.current.push(t);
     });
   }, [signatureName, speakWithCallback, onDismiss]);
@@ -1172,137 +1219,151 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
   return (
     <div
       className="fixed inset-0 z-[9999]"
-      onClick={stage === 'chill' ? handleTapScreen : undefined}
-      style={{ cursor: stage === 'chill' ? 'pointer' : 'default' }}
+      onClick={stage === 'glitch' ? handleScreenTap : undefined}
+      style={{ cursor: stage === 'glitch' ? 'pointer' : 'default' }}
       data-testid="celebration-overlay"
     >
-      <video
-        ref={videoRef}
-        src="/celebration.mp4"
-        className="absolute inset-0 w-full h-full object-cover"
-        autoPlay
-        playsInline
-        onEnded={() => {
-          if (!hasTriggeredRef.current) {
-            handleVideoFirstLoop();
-          }
-        }}
-        style={{ opacity: 0.7, filter: 'brightness(0.45) saturate(1.3)' }}
-      />
+      {stage === 'announcing' && (
+        <div className="absolute inset-0 bg-black flex flex-col items-center justify-center">
+          <div className="w-16 h-16 rounded-full border-2 border-amber-400/40 flex items-center justify-center mb-4" style={{ animation: 'pulse-glow 2s ease-in-out infinite' }}>
+            <div className="w-3 h-3 rounded-full bg-amber-400" style={{ animation: 'calc-dot-bounce 1.5s ease-in-out infinite' }} />
+          </div>
+          <p className="text-amber-400/80 text-sm tracking-[0.3em] uppercase" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
+            {isProfit ? "MISSION COMPLETE" : "MISSION ENDED"}
+          </p>
+          <p className="text-white/30 text-xs mt-2 tracking-wider">
+            กำลังประกาศผล...
+          </p>
+        </div>
+      )}
 
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {coinParticles.map(p => (
-          <div
-            key={p.id}
-            className="absolute rounded-full"
-            style={{
-              width: `${p.width}px`,
-              height: `${p.width}px`,
-              left: `${p.left}%`,
-              top: `-${p.topOffset}px`,
-              background: `radial-gradient(circle, ${p.isGold ? '#F59E0B' : '#FBBF24'} 0%, transparent 70%)`,
-              animation: `coin-fall ${p.duration}s linear ${p.delay}s infinite`,
-              opacity: p.opacity,
-            }}
+      {stage !== 'announcing' && (
+        <>
+          <video
+            ref={videoRef}
+            src="/celebration.mp4"
+            className="absolute inset-0 w-full h-full object-cover"
+            playsInline
+            loop
+            muted
+            style={{ opacity: 0.6, filter: 'brightness(0.4) saturate(1.3)' }}
           />
-        ))}
-      </div>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.6) 100%)' }}>
-        {stage !== 'sign' && stage !== 'done' && (
-          <div className="text-center" style={{ animation: 'calc-scale-in 0.8s cubic-bezier(0.34,1.56,0.64,1)' }}>
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {coinParticles.map(p => (
+              <div
+                key={p.id}
+                className="absolute rounded-full"
+                style={{
+                  width: `${p.width}px`,
+                  height: `${p.width}px`,
+                  left: `${p.left}%`,
+                  top: `-${p.topOffset}px`,
+                  background: `radial-gradient(circle, ${p.isGold ? '#F59E0B' : '#FBBF24'} 0%, transparent 70%)`,
+                  animation: `coin-fall ${p.duration}s linear ${p.delay}s infinite`,
+                  opacity: p.opacity,
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: stage !== 'announcing' ? 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.7) 100%)' : undefined }}>
+
+        {(stage === 'showtime' || stage === 'glitch') && (
+          <div className="text-center" style={{ perspective: '800px' }}>
             {isProfit && (
-              <div className="mb-4" style={{ animation: 'bounce 1s infinite' }}>
-                <Trophy className="h-14 w-14 mx-auto text-amber-400" style={{ filter: 'drop-shadow(0 0 30px rgba(251,191,36,0.7))' }} />
+              <div className="mb-6" style={{ animation: 'bounce 1s infinite' }}>
+                <Trophy className="h-16 w-16 mx-auto text-amber-400" style={{ filter: 'drop-shadow(0 0 40px rgba(251,191,36,0.8))' }} />
               </div>
             )}
-            <p className="text-white/90 text-lg font-bold tracking-wide mb-1" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}>
+            <p className="text-white/80 text-sm font-bold tracking-[0.4em] uppercase mb-4" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)', animation: 'text3d-entrance 0.8s ease-out' }}>
               {isProfit ? "MISSION COMPLETE" : "MISSION ENDED"}
             </p>
 
-            <div className="mt-4 rounded-xl px-6 py-5 mx-auto" style={{
-              background: 'rgba(0,0,0,0.55)',
-              border: `1px solid ${isProfit ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
-              boxShadow: isProfit ? '0 0 80px rgba(245,158,11,0.15)' : '0 0 80px rgba(239,68,68,0.15)',
-              backdropFilter: 'blur(12px)',
-              minWidth: '280px',
-              maxWidth: '90vw',
-            }}>
-              <div className="flex items-center justify-between gap-4 mb-2 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <span className="text-white/40 text-xs">ทุนตั้งต้น</span>
-                <span className="text-white/80 text-base font-bold tabular-nums" data-testid="text-capital">
-                  {safeCapital.toLocaleString()} <span className="text-[10px] text-white/40">THB</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-4 mb-3 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <span className="text-white/40 text-xs">ยอดถอนรวม</span>
-                <span className="text-white/80 text-base font-bold tabular-nums" data-testid="text-total-withdraw">
-                  {totalWithdrawal.toLocaleString()} <span className="text-[10px] text-white/40">THB</span>
-                </span>
-              </div>
-
-              <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] text-center mb-1">
-                {isProfit ? "กำไรสุทธิ" : "ขาดทุน"}
+            <div className="mb-2">
+              <p className="text-white/30 text-[10px] uppercase tracking-[0.3em] mb-2">
+                {isProfit ? "NET PROFIT" : "NET LOSS"}
               </p>
-              <div
-                className="font-black tabular-nums text-center"
-                style={{
-                  fontSize: 'clamp(2.5rem, 10vw, 5rem)',
-                  color: isProfit ? '#F59E0B' : '#EF4444',
-                  textShadow: isProfit
-                    ? '0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.3)'
-                    : '0 0 40px rgba(239,68,68,0.6)',
-                  lineHeight: 1.1,
-                  animation: isProfit ? 'pulse-glow 2s ease-in-out infinite' : 'none',
-                }}
-                data-testid="text-celebration-profit"
-              >
-                {isProfit ? "+" : ""}{safeProfitVal.toLocaleString()}
-              </div>
-              <p className="text-white/70 text-sm font-bold tracking-wider text-center">THB</p>
-              <div className="mt-2 text-center">
-                <span className="inline-block px-4 py-1 rounded-full text-sm font-bold" style={{
-                  background: isProfit ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)',
-                  border: `1px solid ${isProfit ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            </div>
+
+            <div
+              className={`font-black tabular-nums text-center ${stage === 'glitch' ? 'glitch-text' : ''}`}
+              data-text={profitStr}
+              style={{
+                fontSize: 'clamp(3rem, 14vw, 7rem)',
+                color: isProfit ? '#F59E0B' : '#EF4444',
+                textShadow: isProfit
+                  ? '0 4px 20px rgba(245,158,11,0.8), 0 0 60px rgba(245,158,11,0.4), 0 0 120px rgba(245,158,11,0.2), 0 8px 0 rgba(180,120,0,0.3)'
+                  : '0 4px 20px rgba(239,68,68,0.8), 0 0 60px rgba(239,68,68,0.4), 0 8px 0 rgba(180,40,40,0.3)',
+                lineHeight: 1.1,
+                fontFamily: "'JetBrains Mono', monospace",
+                animation: stage === 'glitch'
+                  ? 'profit-breathe 3s ease-in-out infinite, glitch-color 4s infinite linear'
+                  : 'none',
+                letterSpacing: '0.05em',
+              }}
+              data-testid="text-celebration-profit"
+            >
+              {stage === 'showtime' ? typedDigits.join('') : profitStr}
+              {stage === 'showtime' && <span className="inline-block w-[3px] h-[1em] bg-current ml-1 align-baseline" style={{ animation: 'calc-dot-bounce 0.8s step-end infinite' }} />}
+            </div>
+
+            <p className="text-white/60 text-lg font-bold tracking-[0.5em] text-center mt-1" style={{ animation: showPctBadge ? 'typewriter-pop 0.6s cubic-bezier(0.34,1.56,0.64,1)' : 'none', opacity: showPctBadge ? 1 : 0 }}>THB</p>
+
+            {showPctBadge && (
+              <div className="mt-4 text-center" style={{ animation: 'typewriter-pop 0.6s cubic-bezier(0.34,1.56,0.64,1)' }}>
+                <span className="inline-block px-5 py-1.5 rounded-full text-base font-bold" style={{
+                  background: isProfit ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+                  border: `1px solid ${isProfit ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
                   color: isProfit ? '#FBBF24' : '#F87171',
+                  boxShadow: isProfit ? '0 0 30px rgba(245,158,11,0.15)' : '0 0 30px rgba(239,68,68,0.15)',
                 }}>
                   {isProfit ? "+" : ""}{profitPct.toFixed(1)}%
                 </span>
               </div>
-            </div>
-
-            {canTap && stage === 'chill' && (
-              <p className="text-white/40 text-xs mt-6 tracking-wider" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
-                แตะหน้าจอเพื่อดำเนินการต่อ
-              </p>
             )}
 
-            {stage === 'playing' && (
-              <p className="text-white/20 text-xs mt-6 tracking-wider" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
-                กำลังประกาศผล...
+            <div className="mt-4 flex items-center justify-between gap-6 text-xs" style={{ animation: showPctBadge ? 'float-up 0.6s ease-out' : 'none', opacity: showPctBadge ? 1 : 0 }}>
+              <div className="text-center">
+                <p className="text-white/30 text-[9px] uppercase tracking-wider">Capital</p>
+                <p className="text-white/70 font-bold tabular-nums">{safeCapital.toLocaleString()}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-white/30 text-[9px] uppercase tracking-wider">Withdrawal</p>
+                <p className="text-white/70 font-bold tabular-nums">{totalWithdrawal.toLocaleString()}</p>
+              </div>
+            </div>
+
+            {stage === 'glitch' && (
+              <p className="text-white/40 text-xs mt-8 tracking-wider" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>
+                แตะหน้าจอเพื่อบันทึกภารกิจ
               </p>
             )}
           </div>
         )}
 
-        {stage === 'sign' && (
+        {stage === 'name' && (
           <div className="text-center w-80 max-w-[90vw]" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
-            <p className="text-white/90 text-lg font-bold mb-4" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}>
+            <p className="text-white/90 text-lg font-bold mb-2" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}>
               บันทึกภารกิจ
             </p>
+            <div className={`font-black tabular-nums text-center mb-4 glitch-text`} data-text={profitStr} style={{
+              fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
+              color: isProfit ? '#F59E0B' : '#EF4444',
+              textShadow: isProfit ? '0 0 30px rgba(245,158,11,0.5)' : '0 0 30px rgba(239,68,68,0.5)',
+              fontFamily: "'JetBrains Mono', monospace",
+              animation: 'glitch-color 4s infinite linear',
+            }}>
+              {profitStr} <span className="text-white/50 text-sm">THB</span>
+            </div>
             <div className="rounded-lg px-5 py-4 mb-4" style={{
               background: 'rgba(0,0,0,0.6)',
               border: '1px solid rgba(245,158,11,0.2)',
               backdropFilter: 'blur(10px)',
             }}>
-              <div className="text-center mb-3">
-                <span className="text-amber-400 text-2xl font-black tabular-nums">{isProfit ? "+" : ""}{safeProfitVal.toLocaleString()}</span>
-                <span className="text-white/50 text-sm ml-1">THB</span>
-                <span className="ml-2 text-sm font-bold" style={{ color: isProfit ? '#FBBF24' : '#F87171' }}>
-                  ({isProfit ? "+" : ""}{profitPct.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="space-y-1 text-xs">
+              <div className="space-y-1 text-xs mb-3">
                 {safeSiteWithdrawals.map((sw, i) => (
                   <div key={i} className="flex items-center justify-between gap-2">
                     <span className="text-amber-400/60 truncate" style={{ maxWidth: '120px' }}>{sw.name}</span>
@@ -1311,7 +1372,7 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
                 ))}
               </div>
             </div>
-            <p className="text-amber-400/80 text-xs tracking-wider mb-2">ลงชื่อเพื่อจบภารกิจ</p>
+            <p className="text-amber-400/80 text-xs tracking-wider mb-2">ใส่ชื่อของคุณเพื่อจบภารกิจ</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1320,9 +1381,11 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
                 placeholder="พิมพ์ชื่อของคุณ..."
                 className="flex-1 bg-black/50 border border-amber-400/30 rounded-md px-3 py-2 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-amber-400/60"
                 data-testid="input-signature"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSign(); }}
               />
               <button
-                onClick={handleSign}
+                onClick={(e) => { e.stopPropagation(); handleSign(); }}
                 disabled={!signatureName.trim()}
                 className="px-4 py-2 rounded-md text-sm font-bold disabled:opacity-30"
                 style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000' }}
@@ -1337,7 +1400,7 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
         {stage === 'done' && (
           <div className="text-center" style={{ animation: 'calc-scale-in 0.5s cubic-bezier(0.34,1.56,0.64,1)' }}>
             <p className="text-amber-400 text-xl font-bold tracking-wider">
-              ลงชื่อโดย: {signatureName}
+              {signatureName}
             </p>
             <p className="text-white/40 text-xs mt-2">กำลังบันทึกและรีเซ็ต...</p>
           </div>
@@ -1345,6 +1408,19 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
       </div>
     </div>
   );
+}
+
+function buildVoiceText(isProfit: boolean, profit: number, capital: number, withdrawal: number, pct: number): string {
+  const pctText = `${Math.abs(pct).toFixed(1)} เปอร์เซ็นต์`;
+  if (!isProfit) {
+    return `ภารกิจเสร็จสิ้นค่ะ ทุนตั้งต้น ${capital} บาท ถอนได้ ${withdrawal} บาท ขาดทุน ${Math.abs(profit)} บาท คิดเป็น ${pctText} สู้ใหม่รอบหน้านะคะ`;
+  } else if (profit <= 5000) {
+    return `เย้! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${capital} บาท ถอนได้ ${withdrawal} บาท กำไร ${profit} บาท คิดเป็น ${pctText} ดีใจด้วยนะคะ!`;
+  } else if (profit <= 20000) {
+    return `ว้าว! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${capital} บาท ถอนได้ ${withdrawal} บาท กำไร ${profit} บาท คิดเป็น ${pctText} สุดยอดเลยค่ะ!`;
+  } else {
+    return `เฮ! เฮ! เฮ! ภารกิจสำเร็จค่ะ ทุนตั้งต้น ${capital} บาท ถอนได้ ${withdrawal} บาท กำไร ${profit} บาท คิดเป็น ${pctText} มหาศาลเลยค่ะ!`;
+  }
 }
 
 function SiteManager({ sites, onAdd, onUpdate, onDelete }: {

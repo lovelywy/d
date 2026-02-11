@@ -183,3 +183,69 @@ input[type="number"]::-webkit-outer-spin-button {
   90% { opacity: 0.8; }
   100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
+
+@keyframes typewriter-pop {
+  0% { transform: scale(0) rotateX(90deg) translateZ(-100px); opacity: 0; filter: blur(8px); }
+  40% { transform: scale(1.3) rotateX(-10deg) translateZ(40px); opacity: 1; filter: blur(0); }
+  60% { transform: scale(0.95) rotateX(5deg) translateZ(10px); }
+  80% { transform: scale(1.05) rotateX(-2deg) translateZ(5px); }
+  100% { transform: scale(1) rotateX(0deg) translateZ(0px); opacity: 1; filter: blur(0); }
+}
+
+@keyframes glitch-1 {
+  0%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); }
+  20% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 2px); }
+  40% { clip-path: inset(40% 0 30% 0); transform: translate(3px, -1px); }
+  60% { clip-path: inset(60% 0 10% 0); transform: translate(-2px, 1px); }
+  80% { clip-path: inset(10% 0 70% 0); transform: translate(2px, -2px); }
+}
+
+@keyframes glitch-2 {
+  0%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); }
+  25% { clip-path: inset(30% 0 50% 0); transform: translate(4px, 1px); }
+  50% { clip-path: inset(50% 0 20% 0); transform: translate(-4px, -2px); }
+  75% { clip-path: inset(10% 0 80% 0); transform: translate(3px, 2px); }
+}
+
+@keyframes glitch-color {
+  0%, 100% { text-shadow: 2px 0 #ff0000, -2px 0 #00ffff; }
+  25% { text-shadow: -3px 0 #ff0000, 3px 0 #00ffff; }
+  50% { text-shadow: 3px 2px #ff0000, -3px -2px #00ffff; }
+  75% { text-shadow: -2px -1px #ff0000, 2px 1px #00ffff; }
+}
+
+@keyframes text3d-entrance {
+  0% { transform: perspective(800px) rotateY(-30deg) scale(0.5); opacity: 0; }
+  50% { transform: perspective(800px) rotateY(10deg) scale(1.1); }
+  100% { transform: perspective(800px) rotateY(0deg) scale(1); opacity: 1; }
+}
+
+@keyframes profit-breathe {
+  0%, 100% { transform: perspective(600px) rotateX(0deg) scale(1); }
+  50% { transform: perspective(600px) rotateX(3deg) scale(1.02); }
+}
+
+.glitch-text {
+  position: relative;
+}
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.glitch-text::before {
+  animation: glitch-1 3s infinite linear alternate-reverse;
+  color: #ff0000;
+  mix-blend-mode: screen;
+  opacity: 0.15;
+}
+.glitch-text::after {
+  animation: glitch-2 2.5s infinite linear alternate-reverse;
+  color: #00ffff;
+  mix-blend-mode: screen;
+  opacity: 0.15;
+}
