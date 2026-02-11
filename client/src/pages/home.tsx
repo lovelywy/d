@@ -31,7 +31,7 @@ import ysl99Logo from "@assets/logo_(2)_1770746907176.png";
 import kc9Logo from "@assets/logo20250513054304358_(1)_1770746907160.png";
 import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
 import m98Logo from "@assets/l20220608030750449_1770746907302.png";
-import dollcaraLogo from "@assets/AIRetouch_20260211_092959046_1770777480106.png";
+import dollcaraLogo from "@assets/1770782231327_1770782391291.gif";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -365,20 +365,13 @@ export default function App() {
       )}
 
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="relative flex items-center gap-3 py-2">
-          <div className="w-32 md:w-40 flex-shrink-0 pointer-events-none" data-testid="img-logo">
-            <img src={dollcaraLogo} alt="Dollcara" className="w-full h-auto object-contain" />
+        <header className="relative py-1" data-testid="img-logo">
+          <img src={dollcaraLogo} alt="Dollcara Mission by Vava" className="w-full h-auto object-contain" />
+          <div className="absolute top-1 right-1">
+            <Button variant="outline" size="icon" className="flex-shrink-0" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
-            <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight" data-testid="text-copyright">
-              เผยแพร่&reg; ลิขสิทธิ์ โดย &copy; นิวัฒน์ รักสนิท<br />
-              Published&reg; Copyright by &copy; Niwat Raksanit
-            </p>
-          </div>
-          <Button variant="outline" size="icon" className="flex-shrink-0" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
-            <RefreshCcw className="h-4 w-4" />
-          </Button>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
