@@ -1078,18 +1078,6 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
     synth.speak(u);
   }, [cachedVoice]);
 
-  useEffect(() => {
-    const fallback = setTimeout(() => {
-      if (!hasTriggeredRef.current) handleVideoFirstLoop();
-    }, 8000);
-    return () => {
-      clearTimeout(fallback);
-      window.speechSynthesis?.cancel();
-      timersRef.current.forEach(clearTimeout);
-      if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
-    };
-  }, [handleVideoFirstLoop]);
-
   const startChillAudio = useCallback(() => {
     try {
       const ctx = new AudioContext();
@@ -1153,6 +1141,18 @@ function CelebrationOverlay({ profit, isProfit, profitPct, capitalThb, siteWithd
       startChillAudio();
     });
   }, [isProfit, safeProfitVal, safeCapital, totalWithdrawal, profitPct, speakWithCallback, startChillAudio]);
+
+  useEffect(() => {
+    const fallback = setTimeout(() => {
+      if (!hasTriggeredRef.current) handleVideoFirstLoop();
+    }, 8000);
+    return () => {
+      clearTimeout(fallback);
+      window.speechSynthesis?.cancel();
+      timersRef.current.forEach(clearTimeout);
+      if (bgAudioRef.current) { bgAudioRef.current.pause(); bgAudioRef.current = null; }
+    };
+  }, [handleVideoFirstLoop]);
 
   const handleTapScreen = useCallback(() => {
     if (!canTap || stage !== 'chill') return;
