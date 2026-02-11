@@ -365,19 +365,20 @@ export default function App() {
       )}
 
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="relative flex flex-wrap items-center gap-2 py-2">
-          <div className="flex-1 min-w-0 pointer-events-none" data-testid="img-logo">
-            <img src={dollcaraLogo} alt="Dollcara" className="w-full max-h-24 md:max-h-28 object-contain object-left" />
+        <header className="relative flex items-center gap-3 py-2">
+          <div className="w-24 md:w-32 flex-shrink-0 pointer-events-none" data-testid="img-logo">
+            <img src={dollcaraLogo} alt="Dollcara" className="w-full h-auto object-contain" />
           </div>
-          <div className="absolute bottom-1 right-1 flex items-end gap-2">
-            <p className="text-[9px] text-muted-foreground leading-tight text-right" data-testid="text-copyright">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight gold-text" data-testid="text-app-title">Dollcara Mission by Vava</h1>
+            <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight" data-testid="text-copyright">
               เผยแพร่&reg; ลิขสิทธิ์ โดย &copy; นิวัฒน์ รักสนิท<br />
               Published&reg; Copyright by &copy; Niwat Raksanit
             </p>
-            <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
-              <RefreshCcw className="h-4 w-4" />
-            </Button>
           </div>
+          <Button variant="outline" size="icon" className="flex-shrink-0" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
