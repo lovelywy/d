@@ -362,8 +362,20 @@ export default function App() {
               speak(`วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรขั้นต่ำ ${Math.round(calcAnimation.profits.min)} บาท สูงสุด ${Math.round(calcAnimation.profits.max)} บาท เฉลี่ยประมาณ ${avgPct} เปอร์เซ็นต์ เลยนะคะ`);
             }
           }}
-          onDismiss={() => {
+          onDismiss={async () => {
             setCalcAnimation(null);
+            if (calcResults.length > 0) {
+              for (const res of calcResults) {
+                await updateSiteMutation.mutateAsync({
+                  id: res.id,
+                  updates: { targetTurnover: res.totalTarget.toString(), currentTurnover: "0", remainingBalance: null }
+                });
+              }
+              setActiveTab("tracker");
+              setTimeout(() => {
+                speak("มาทำเทิร์นให้ครบกันเลยค่ะ");
+              }, 500);
+            }
           }}
         />
       )}
