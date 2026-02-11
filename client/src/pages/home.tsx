@@ -398,8 +398,8 @@ export default function App() {
       )}
 
       <div className="max-w-5xl mx-auto space-y-4">
-        <header className="relative py-0 -mb-2" data-testid="img-logo">
-          <img src={dollcaraLogo} alt="Dollcara Mission by Vava" className="w-full h-auto object-contain" />
+        <header className="relative py-0 -mb-2 overflow-hidden" data-testid="img-logo" style={{ maxHeight: '85%' }}>
+          <img src={dollcaraLogo} alt="Dollcara Mission by Vava" className="w-full object-cover" style={{ transform: 'scaleY(0.85)', transformOrigin: 'center' }} />
           <div className="absolute top-1 right-1">
             <Button variant="outline" size="icon" className="flex-shrink-0" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/sites"] })} data-testid="button-refresh">
               <RefreshCcw className="h-4 w-4" />
@@ -732,8 +732,8 @@ export default function App() {
           </TabsContent>
         </Tabs>
 
-        <footer className="mt-1 -mb-2" data-testid="footer-banner">
-          <img src={footerBanner} alt="Dollcara Footer" className="w-full h-auto object-contain" />
+        <footer className="mt-1 -mb-2 overflow-hidden" data-testid="footer-banner">
+          <img src={footerBanner} alt="Dollcara Footer" className="w-full object-cover" style={{ transform: 'scaleY(0.85)', transformOrigin: 'center' }} />
         </footer>
       </div>
 
