@@ -1011,24 +1011,25 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
               {siteNames.slice(0, revealedSites).map((name, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between gap-2 text-sm px-3 py-2 rounded-md"
+                  className="flex items-center justify-between gap-2 px-3 py-2 rounded-md"
                   style={{
                     animation: 'calc-slide-in 0.3s ease-out',
                     color: 'rgba(255,255,255,0.85)',
                     background: 'rgba(245,158,11,0.05)',
+                    fontSize: '0.93rem',
                   }}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
                     <SiteLogo name={name} className="h-5 w-5" />
-                    <span className="font-semibold truncate max-w-[80px]">{name}</span>
+                    <span className="font-semibold truncate max-w-[100px]">{name}</span>
                   </div>
                   {results && results[i] && (
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-emerald-400 font-bold text-sm">
+                    <div className="flex items-center gap-2 flex-shrink-0" style={{ fontSize: '0.93rem' }}>
+                      <span className="text-emerald-400 font-bold">
                         {results[i].usdtUsed.toFixed(1)} USDT
                       </span>
-                      <span className="text-amber-400 font-bold text-sm">
-                        {Math.round(results[i].depositedThb).toLocaleString()} THB
+                      <span className="text-amber-400 font-bold">
+                        {Math.round(results[i].depositedThb).toLocaleString()} ฿
                       </span>
                       <Check className="h-4 w-4 text-emerald-400" />
                     </div>
@@ -1049,9 +1050,9 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
                 <p className="text-amber-400/70 text-xs tracking-[0.15em] mb-1">กำไรคาดการณ์ที่จะได้</p>
                 <p className="font-black text-2xl md:text-3xl text-amber-400"
                   style={{ textShadow: '0 0 30px rgba(245,158,11,0.5)' }}>
-                  {profits.minPct.toFixed(1)}% - {profits.maxPct.toFixed(1)}%
+                  {Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()} ฿
                 </p>
-                <p className="text-amber-400/80 text-xs mt-0.5">({Math.round(profits.min).toLocaleString()} - {Math.round(profits.max).toLocaleString()} THB)</p>
+                <p className="text-amber-400/80 text-sm mt-0.5">({profits.minPct.toFixed(1)}% - {profits.maxPct.toFixed(1)}%)</p>
               </div>
             </div>
           )}
