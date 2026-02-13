@@ -33,7 +33,7 @@ import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
 import m98Logo from "@assets/l20220608030750449_1770746907302.png";
 import dollcaraLogo from "@assets/1770782231327_1770782391291.gif";
 import footerBanner from "@assets/1770786318358_1770786389453.gif";
-import transitionVideo from "@assets/grok_video_2026-02-13-14-09-47_1770971628540.mp4";
+import transitionVideo from "@assets/video_20260213_151905_1770970758795.mp4";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
