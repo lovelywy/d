@@ -983,7 +983,7 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
             />
             <p className="text-amber-400/90 text-lg font-bold tracking-[0.15em]"
               style={{ textShadow: '0 0 20px rgba(245,158,11,0.4)' }}>
-              {phase < 3 ? 'คำนวณยอดฝากแต่ละเว็บ' : 'คำนวณเสร็จสิ้น'}
+              {phase < 3 ? 'ยอดที่ต้องฝากแต่ละเว็บ' : 'คำนวณเสร็จสิ้น'}
             </p>
           </div>
 
@@ -1722,14 +1722,9 @@ function TransitionToTracker({ onComplete }: { onComplete: () => void }) {
 
   const handleVideoEnd = useCallback(() => {
     setVideoEnded(true);
-    setShowTapHint(true);
-  }, []);
-
-  const handleTap = useCallback(() => {
-    if (!videoEnded) return;
     setOpacity(0);
     setTimeout(() => onComplete(), 600);
-  }, [videoEnded, onComplete]);
+  }, [onComplete]);
 
   return (
     <div
@@ -1738,9 +1733,7 @@ function TransitionToTracker({ onComplete }: { onComplete: () => void }) {
         background: '#000',
         opacity,
         transition: 'opacity 0.6s ease-in-out',
-        cursor: videoEnded ? 'pointer' : 'default',
       }}
-      onClick={handleTap}
       data-testid="transition-to-tracker"
     >
       <video
@@ -1751,32 +1744,6 @@ function TransitionToTracker({ onComplete }: { onComplete: () => void }) {
         onEnded={handleVideoEnd}
         data-testid="transition-video"
       />
-
-      {showTapHint && (
-        <div
-          className="absolute bottom-20 left-0 right-0 flex justify-center"
-          style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
-        >
-          <span
-            className="text-white text-lg font-bold tracking-wider uppercase px-6 py-3 rounded-xl"
-            style={{
-              background: 'rgba(0,0,0,0.5)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              backdropFilter: 'blur(8px)',
-              textShadow: '0 0 10px rgba(0,255,157,0.7)',
-            }}
-          >
-            แตะหน้าจอเพื่อไปทำเทิร์น
-          </span>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(0.97); }
-        }
-      `}</style>
     </div>
   );
 }
