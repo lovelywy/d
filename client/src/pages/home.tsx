@@ -33,6 +33,7 @@ import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
 import m98Logo from "@assets/l20220608030750449_1770746907302.png";
 import dollcaraLogo from "@assets/1770782231327_1770782391291.gif";
 import footerBanner from "@assets/1770786318358_1770786389453.gif";
+import transitionVideo from "@assets/video_20260213_151905_1770970758795.mp4";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -114,6 +115,7 @@ export default function App() {
   const [configName, setConfigName] = useState("");
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [calcAnimation, setCalcAnimation] = useState<{ show: boolean; sites: string[]; results: any[] | null; profits: { min: number; max: number; minPct: number; maxPct: number } | null; numSites: number } | null>(null);
+  const [showTransition, setShowTransition] = useState(false);
 
   const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
@@ -414,11 +416,20 @@ export default function App() {
                   updates: { targetTurnover: res.totalTarget.toString(), currentTurnover: "0", remainingBalance: null }
                 });
               }
-              setActiveTab("tracker");
-              setTimeout(() => {
-                speak("มาทำเทิร์นให้ครบกันเลยค่ะ");
-              }, 500);
+              setShowTransition(true);
             }
+          }}
+        />
+      )}
+
+      {showTransition && (
+        <TransitionToTracker
+          onComplete={() => {
+            setShowTransition(false);
+            setActiveTab("tracker");
+            setTimeout(() => {
+              speak("มาทำเทิร์นให้ครบกันเลยค่ะ");
+            }, 500);
           }}
         />
       )}
@@ -1691,5 +1702,80 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function TransitionToTracker({ onComplete }: { onComplete: () => void }) {
+  const [opacity, setOpacity] = useState(0);
+  const [showTapHint, setShowTapHint] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    setOpacity(1);
+    const v = videoRef.current;
+    if (v) {
+      v.play().catch(() => {});
+    }
+  }, []);
+
+  const handleVideoEnd = useCallback(() => {
+    setVideoEnded(true);
+    setShowTapHint(true);
+  }, []);
+
+  const handleTap = useCallback(() => {
+    if (!videoEnded) return;
+    setOpacity(0);
+    setTimeout(() => onComplete(), 600);
+  }, [videoEnded, onComplete]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center"
+      style={{
+        background: '#000',
+        opacity,
+        transition: 'opacity 0.6s ease-in-out',
+        cursor: videoEnded ? 'pointer' : 'default',
+      }}
+      onClick={handleTap}
+      data-testid="transition-to-tracker"
+    >
+      <video
+        ref={videoRef}
+        src={transitionVideo}
+        playsInline
+        className="absolute inset-0 w-full h-full object-contain"
+        onEnded={handleVideoEnd}
+        data-testid="transition-video"
+      />
+
+      {showTapHint && (
+        <div
+          className="absolute bottom-20 left-0 right-0 flex justify-center"
+          style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
+        >
+          <span
+            className="text-white text-lg font-bold tracking-wider uppercase px-6 py-3 rounded-xl"
+            style={{
+              background: 'rgba(0,0,0,0.5)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              backdropFilter: 'blur(8px)',
+              textShadow: '0 0 10px rgba(0,255,157,0.7)',
+            }}
+          >
+            แตะหน้าจอเพื่อไปทำเทิร์น
+          </span>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(0.97); }
+        }
+      `}</style>
+    </div>
   );
 }
