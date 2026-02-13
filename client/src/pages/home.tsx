@@ -453,7 +453,24 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button className="flex-1" onClick={() => { triggerHaptic('medium'); calculateSplit(true); }} data-testid="button-calculate">คำนวณ</Button>
+                  <button
+                    className="flex-1 uppercase tracking-[3px] font-bold text-lg no-underline transition-all duration-300"
+                    style={{
+                      padding: '12px 36px',
+                      background: '#0d1117',
+                      color: '#00ff9d',
+                      border: '2px solid #00ff9d',
+                      borderRadius: '12px',
+                      boxShadow: '0 0 25px rgba(0,255,157,0.5)',
+                      backdropFilter: 'blur(5px)',
+                      letterSpacing: '3px',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.30)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,100,0,0.6)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 0 25px rgba(0,255,157,0.5)'; }}
+                    onClick={() => { triggerHaptic('medium'); calculateSplit(true); }}
+                    data-testid="button-calculate"
+                  >คำนวณ</button>
                   <Button variant="outline" onClick={() => { setCalcResults([]); setProfits({ min: 0, max: 0, minPct: 0, maxPct: 0 }); }} data-testid="button-clear-calc">ล้าง</Button>
                 </div>
               </CardContent>
