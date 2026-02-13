@@ -67,6 +67,64 @@ function triggerHaptic(pattern: 'light' | 'medium' | 'heavy' | 'nav' | number[])
   } catch (_) {}
 }
 
+function playSfx(type: 'add' | 'delete' | 'update' | 'success') {
+  try {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+
+    if (type === 'add') {
+      [523, 659, 784].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+        gain.gain.setValueAtTime(0.12, now + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.15);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.15);
+      });
+    } else if (type === 'delete') {
+      [440, 370, 294].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.07);
+        gain.gain.setValueAtTime(0.1, now + i * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.12);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + i * 0.07);
+        osc.stop(now + i * 0.07 + 0.12);
+      });
+    } else if (type === 'update') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.linearRampToValueAtTime(900, now + 0.1);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (type === 'success') {
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.12);
+        gain.gain.setValueAtTime(0.1, now + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.2);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + i * 0.12);
+        osc.stop(now + i * 0.12 + 0.2);
+      });
+    }
+
+    setTimeout(() => ctx.close().catch(() => {}), 2000);
+  } catch (_) {}
+}
+
 function profitHaptic(profit: number, isProfit: boolean) {
   if (!isProfit || profit <= 0) {
     triggerHaptic([30]);
@@ -554,7 +612,7 @@ export default function App() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setSelectedSiteIds(prev => prev.filter((_, i) => i !== rowIndex))}
+                              onClick={() => { playSfx('delete'); triggerHaptic('light'); setSelectedSiteIds(prev => prev.filter((_, i) => i !== rowIndex)); }}
                               data-testid={`button-remove-row-${rowIndex}`}
                             >
                               <Minus className="h-4 w-4 text-destructive" />
@@ -573,10 +631,13 @@ export default function App() {
                     <Button
                       variant="outline"
                       size="sm"
+                      
                       disabled={selectedSiteIds.length >= 5 || sites.filter(s => !selectedSiteIds.includes(s.id)).length === 0}
                       onClick={() => {
                         const available = sites.filter(s => !selectedSiteIds.includes(s.id));
                         if (available.length > 0) {
+                          playSfx('add');
+                          triggerHaptic('light');
                           setSelectedSiteIds(prev => [...prev, available[0].id]);
                         }
                       }}
@@ -1532,7 +1593,7 @@ function SiteManager({ sites, onAdd, onUpdate, onDelete }: {
           <div className="space-y-1"><Label className="text-xs">โบนัส %</Label><Input data-testid="input-site-bonus" type="number" value={bonus} onChange={e => setBonus(e.target.value)} /></div>
           <div className="col-span-2 space-y-1"><Label className="text-xs">เครดิตที่มีอยู่เดิม (บาท)</Label><Input data-testid="input-site-balance" type="number" value={balance} onChange={e => setBalance(e.target.value)} /></div>
         </div>
-        <Button className="w-full" onClick={() => { if (!name.trim()) return; onAdd({ name: name.trim(), depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); toast({ title: "เพิ่มเว็บแล้ว" }); }} data-testid="button-add-site"><Plus className="mr-1 h-4 w-4" /> เพิ่มเว็บ</Button>
+        <Button className="w-full" onClick={() => { if (!name.trim()) return; playSfx('add'); triggerHaptic('medium'); onAdd({ name: name.trim(), depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); toast({ title: "เพิ่มเว็บแล้ว" }); }} data-testid="button-add-site"><Plus className="mr-1 h-4 w-4" /> เพิ่มเว็บ</Button>
       </div>
 
       <div className="border-t pt-4">
@@ -1564,7 +1625,7 @@ function SiteManager({ sites, onAdd, onUpdate, onDelete }: {
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => startEdit(site)} data-testid={`button-edit-site-${site.id}`}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => { if (confirm(`ลบ "${site.name}"?`)) onDelete(site.id); }} data-testid={`button-delete-site-${site.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => { if (confirm(`ลบ "${site.name}"?`)) { playSfx('delete'); triggerHaptic('heavy'); onDelete(site.id); } }} data-testid={`button-delete-site-${site.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </div>
                 )}
@@ -1646,13 +1707,61 @@ function HistoryRow({ entry, onUpdate, onDelete }: { entry: History, onUpdate: (
   );
 }
 
+function AnimatedNumber({ value, className = "" }: { value: number; className?: string }) {
+  const [display, setDisplay] = useState(value);
+  const [animating, setAnimating] = useState(false);
+  const prevRef = useRef(value);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prevRef.current === value) return;
+    const from = prevRef.current;
+    const to = value;
+    prevRef.current = value;
+    setAnimating(true);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const duration = 600;
+    const start = performance.now();
+    const step = (ts: number) => {
+      const elapsed = ts - start;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (t < 1) { rafRef.current = requestAnimationFrame(step); }
+      else { setDisplay(to); setAnimating(false); rafRef.current = null; }
+    };
+    rafRef.current = requestAnimationFrame(step);
+
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [value]);
+
+  return (
+    <span className={`${className} ${animating ? 'tracker-number-pop' : ''}`}>
+      {display.toLocaleString()}
+    </span>
+  );
+}
+
 function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: (site: Site, amount: string) => void, onBalanceSave: (id: number, bal: string) => void }) {
   const [bet, setBet] = useState("");
   const [localBalance, setLocalBalance] = useState(site.remainingBalance || "");
   const current = parseFloat(site.currentTurnover || "0");
   const target = parseFloat(site.targetTurnover || "0");
+  const remaining = Math.max(0, target - current);
   const progress = target > 0 ? Math.min((current / target) * 100, 100) : 0;
   const isComplete = current >= target;
+  const [showFlash, setShowFlash] = useState(false);
+  const prevCurrentRef = useRef(current);
+
+  useEffect(() => {
+    const prev = prevCurrentRef.current;
+    prevCurrentRef.current = current;
+    if (prev !== current && current > prev) {
+      setShowFlash(true);
+      const t = setTimeout(() => setShowFlash(false), 800);
+      return () => clearTimeout(t);
+    }
+  }, [current]);
 
   useEffect(() => {
     setLocalBalance(site.remainingBalance || "");
@@ -1664,24 +1773,54 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
     }
   };
 
+  const handleUpdate = () => {
+    if (!bet.trim()) return;
+    playSfx('update');
+    triggerHaptic('light');
+    onUpdate(site, bet);
+    setBet("");
+  };
+
   return (
-    <Card className={isComplete ? "border-emerald-500/30 gold-glow" : ""} data-testid={`card-tracker-${site.id}`}>
+    <Card className={`${isComplete ? "border-emerald-500/30 gold-glow" : ""} ${showFlash ? 'tracker-flash' : ''}`} data-testid={`card-tracker-${site.id}`}>
       <CardHeader className="pb-1 pt-3 flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base flex items-center gap-2">
           <SiteLogo name={site.name} className="h-7 w-auto max-w-[70px]" />
           {site.name}
         </CardTitle>
-        {isComplete && <Trophy className="h-5 w-5 text-amber-400" />}
+        {isComplete && <Trophy className="h-5 w-5 text-amber-400" style={{ animation: 'bounce 1s infinite' }} />}
       </CardHeader>
       <CardContent className="space-y-3 pt-1">
         <div className="space-y-1">
-          <div className="flex flex-wrap justify-between gap-1 text-xs"><span>ความคืบหน้า</span><span>{Math.round(current).toLocaleString()} / {Math.round(target).toLocaleString()} บาท</span></div>
-          <Progress value={progress} />
-          <p className="text-[10px] text-muted-foreground">เหลือ: {Math.max(0, Math.round(target - current)).toLocaleString()} บาท ({Math.round(progress)}%)</p>
+          <div className="flex flex-wrap justify-between gap-1 text-xs">
+            <span>ความคืบหน้า</span>
+            <span className="font-mono tabular-nums">
+              <AnimatedNumber value={Math.round(current)} className="font-bold text-amber-400" /> / {Math.round(target).toLocaleString()} บาท
+            </span>
+          </div>
+          <Progress value={progress} className="h-3" />
+          <p className="text-[10px] text-muted-foreground">{Math.round(progress)}% สำเร็จ</p>
         </div>
+
+        {!isComplete && (
+          <div className="rounded-md px-3 py-2 text-center" style={{
+            background: remaining > 0 ? 'rgba(245,158,11,0.06)' : 'rgba(16,185,129,0.08)',
+            border: `1px solid ${remaining > 0 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.2)'}`,
+          }}>
+            <p className="text-[10px] text-muted-foreground mb-0.5 tracking-wider uppercase">ยอดเทิร์นคงเหลือ</p>
+            <div className="flex items-center justify-center gap-1">
+              <AnimatedNumber
+                value={Math.round(remaining)}
+                className="font-black text-xl tabular-nums tracking-tight"
+              />
+              <span className="text-sm text-muted-foreground font-medium">บาท</span>
+            </div>
+          </div>
+        )}
+
         {isComplete ? (
           <div className="space-y-2">
-            <p className="text-sm font-bold text-emerald-400 text-center">ครบเทิร์นแล้ว!</p>
+            <p className="text-sm font-bold text-emerald-400 text-center" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>ครบเทิร์นแล้ว!</p>
             <div className="space-y-1">
               <Label className="text-xs">ยอดเงินคงเหลือหลังเล่น (บาท)</Label>
               <Input
@@ -1697,8 +1836,8 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
           </div>
         ) : (
           <div className="flex gap-2">
-            <Input data-testid={`input-bet-${site.id}`} type="number" placeholder="ยอดเดิมพัน" value={bet} onChange={e => setBet(e.target.value)} />
-            <Button onClick={() => { triggerHaptic('light'); onUpdate(site, bet); setBet(""); }} data-testid={`button-update-bet-${site.id}`}>อัปเดต</Button>
+            <Input data-testid={`input-bet-${site.id}`} type="number" placeholder="ยอดเดิมพัน" value={bet} onChange={e => setBet(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleUpdate(); }} />
+            <Button onClick={handleUpdate} data-testid={`button-update-bet-${site.id}`}>อัปเดต</Button>
           </div>
         )}
       </CardContent>
