@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, TrendingUp, RefreshCcw, Plus, Minus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen, Home as HomeIcon } from "lucide-react";
+import { Calculator, TrendingUp, RefreshCcw, RefreshCw, Plus, Minus, Trash2, RotateCcw, Trophy, History as HistoryIcon, Pencil, Save, X, Settings, Check, BookmarkPlus, FolderOpen, Home as HomeIcon } from "lucide-react";
 import type { Site, InsertSite, History } from "@shared/schema";
 import jun88Logo from "@assets/1770526630864_1770526755572.jpg";
 import dk7Logo from "@assets/logo20220909053526986_1770746907226.png";
@@ -219,7 +219,12 @@ export default function App() {
       const res = await fetch("/api/rates/usdt-thb");
       return res.json();
     },
-    onSuccess: (data) => setExchangeRate(data.price),
+    onSuccess: (data) => {
+      const compensated = (parseFloat(data.price) + 0.11).toFixed(2);
+      setExchangeRate(compensated);
+      playSfx('update');
+      triggerHaptic('medium');
+    },
   });
 
   const createSiteMutation = useMutation({
@@ -518,8 +523,18 @@ export default function App() {
                   <Label>อัตราแลก (THB/USDT)</Label>
                   <div className="flex gap-2">
                     <Input data-testid="input-exchange-rate" type="number" value={exchangeRate} onChange={e => setExchangeRate(e.target.value)} />
-                    <Button onClick={() => fetchRateMutation.mutate()} disabled={fetchRateMutation.isPending} data-testid="button-fetch-rate">Fetch</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => fetchRateMutation.mutate()}
+                      disabled={fetchRateMutation.isPending}
+                      data-testid="button-fetch-rate"
+                      className="whitespace-nowrap text-emerald-400 border-emerald-500/50"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-1 ${fetchRateMutation.isPending ? 'animate-spin' : ''}`} />
+                      {fetchRateMutation.isPending ? 'กำลังโหลด...' : 'อัพเดทเรท'}
+                    </Button>
                   </div>
+                  <p className="text-[10px] text-muted-foreground">ชดเชยอัตราแลกเปลี่ยน +0.11 จากเรทเรียลไทม์</p>
                 </div>
                 <div className="flex items-end gap-2">
                   <button
