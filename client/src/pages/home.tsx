@@ -32,7 +32,7 @@ import kc9Logo from "@assets/logo20250513054304358_(1)_1770746907160.png";
 import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
 import m98Logo from "@assets/l20220608030750449_1770746907302.png";
 import dollcaraLogo from "@assets/1770782231327_1770782391291.gif";
-import footerBanner from "@assets/1770786318358_1770786389453.gif";
+import footerBanner from "@assets/20260216_110916_0000_1771223995082.png";
 import transitionVideo from "@assets/video_20260213_151905_1770970758795.mp4";
 
 const SITE_LOGOS: Record<string, string> = {
@@ -842,8 +842,8 @@ export default function App() {
           </TabsContent>
         </Tabs>
 
-        <footer className="mt-1 -mb-2 overflow-hidden" data-testid="footer-banner">
-          <img src={footerBanner} alt="Dollcara Footer" className="w-full object-cover" style={{ transform: 'scaleY(0.85)', transformOrigin: 'center' }} />
+        <footer className="mt-2 rounded-md overflow-hidden" data-testid="footer-banner">
+          <img src={footerBanner} alt="Abstract Data and Profit Insights" className="w-full object-cover" />
         </footer>
       </div>
 
