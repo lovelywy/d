@@ -426,7 +426,9 @@ export default function App() {
       siteWithdrawals,
       pendingHistory: {
         initialThb: totalCapitalThb.toString(),
-        totalUsdt: totalUsdtInput,
+        totalUsdt: capitalInputMode === "thb"
+          ? ((parseFloat(totalThbInput) || 0) / (parseFloat(exchangeRate) || 1)).toFixed(2)
+          : (totalUsdtInput || "0"),
         profit: finalProfit.toString(),
         details: {
           sites: trackerSites.map(s => ({ name: s.name, balance: s.remainingBalance, target: s.targetTurnover })),
@@ -445,12 +447,16 @@ export default function App() {
           ...celebration.pendingHistory,
           userName: signatureName.trim() || "Unknown",
         });
-      } catch (_) {}
+      } catch (err) {
+        console.error("Failed to save history:", err);
+      }
     }
     setCelebration(null);
     try {
       await resetAllMutation.mutateAsync();
-    } catch (_) {}
+    } catch (err) {
+      console.error("Failed to reset:", err);
+    }
     setSelectedSiteIds([]);
     setActiveTab("history");
   };
@@ -475,10 +481,38 @@ export default function App() {
           siteNames={calcAnimation.sites}
           results={calcAnimation.results}
           profits={calcAnimation.profits}
-          onVideoEnd={() => {
+          onVideoEnd={(startAnimation) => {
             if (calcAnimation?.profits) {
               const avgPct = ((calcAnimation.profits.minPct + calcAnimation.profits.maxPct) / 2).toFixed(1);
-              speak(`วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรขั้นต่ำ ${Math.round(calcAnimation.profits.min)} บาท สูงสุด ${Math.round(calcAnimation.profits.max)} บาท เฉลี่ยประมาณ ${avgPct} เปอร์เซ็นต์ เลยนะคะ`);
+              const text = `วาวาคิดให้นะ ฝาก ${calcAnimation.numSites} เว็บ ด้านล่างนี้เลย กำไรขั้นต่ำ ${Math.round(calcAnimation.profits.min)} บาท สูงสุด ${Math.round(calcAnimation.profits.max)} บาท เฉลี่ยประมาณ ${avgPct} เปอร์เซ็นต์ เลยนะคะ`;
+              if (!window.speechSynthesis) {
+                startAnimation();
+                return;
+              }
+              window.speechSynthesis.cancel();
+              const utterance = new SpeechSynthesisUtterance(text);
+              if (cachedVoiceRef.current) {
+                utterance.voice = cachedVoiceRef.current;
+              } else {
+                const voices = window.speechSynthesis.getVoices();
+                const thaiVoice = voices.find(v => v.lang === 'th-TH') || voices.find(v => v.lang.startsWith('th'));
+                if (thaiVoice) {
+                  utterance.voice = thaiVoice;
+                  cachedVoiceRef.current = thaiVoice;
+                }
+              }
+              utterance.lang = 'th-TH';
+              utterance.rate = 1.0;
+              utterance.volume = 1.0;
+              let started = false;
+              const doStart = () => { if (!started) { started = true; startAnimation(); } };
+              utterance.onend = doStart;
+              utterance.onerror = doStart;
+              const fallbackMs = Math.max(3000, text.length * 120);
+              setTimeout(doStart, fallbackMs);
+              window.speechSynthesis.speak(utterance);
+            } else {
+              startAnimation();
             }
           }}
           onDismiss={async () => {
@@ -962,7 +996,7 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
   siteNames: string[];
   results: any[] | null;
   profits: { min: number; max: number; minPct: number; maxPct: number } | null;
-  onVideoEnd: () => void;
+  onVideoEnd: (startAnimation: () => void) => void;
   onDismiss: () => void;
 }) {
   const [stage, setStage] = useState<'video' | 'animation'>('video');
@@ -980,10 +1014,7 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
     setOpacity(1);
   }, []);
 
-  const handleVideoEnd = useCallback(() => {
-    setStage('animation');
-    onVideoEnd();
-
+  const startNumberAnimation = useCallback(() => {
     rollRef.current = setInterval(() => {
       setRollingNumbers(Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)));
     }, 50);
@@ -1002,7 +1033,12 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
     });
 
     timersRef.current = [t1, t2, t3, t4, ...siteTimers];
-  }, [siteNames, onVideoEnd]);
+  }, [siteNames]);
+
+  const handleVideoEnd = useCallback(() => {
+    setStage('animation');
+    onVideoEnd(startNumberAnimation);
+  }, [onVideoEnd, startNumberAnimation]);
 
   useEffect(() => {
     return () => {
