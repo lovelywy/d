@@ -33,7 +33,8 @@ import y568Logo from "@assets/202511210902588998035_1770746907290.gif";
 import m98Logo from "@assets/l20220608030750449_1770746907302.png";
 import dollcaraLogo from "@assets/1770782231327_1770782391291.gif";
 import footerBanner from "@assets/20260216_110916_0000_1771223995082.png";
-import transitionVideo from "@assets/video_20260216_140930_1771290249616.mp4";
+import calcVideo from "@assets/video_20260216_140930_1771290249616.mp4";
+import transitionVideo from "@assets/video_20260213_151905_1770970758795.mp4";
 
 const SITE_LOGOS: Record<string, string> = {
   "jun88": jun88Logo,
@@ -1081,7 +1082,7 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
         <div className="text-center relative z-10 px-4 w-full max-w-lg">
           <video
             ref={videoRef}
-            src={transitionVideo}
+            src={calcVideo}
             autoPlay
             playsInline
             onEnded={handleVideoEnd}
