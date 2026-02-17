@@ -593,7 +593,23 @@ export default function App() {
                     onClick={() => { triggerHaptic('medium'); calculateSplit(true); }}
                     data-testid="button-calculate"
                   >คำนวณ</button>
-                  <Button variant="outline" onClick={() => { setCalcResults([]); setProfits({ min: 0, max: 0, minPct: 0, maxPct: 0 }); }} data-testid="button-clear-calc">ล้าง</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      playSfx('delete');
+                      triggerHaptic('heavy');
+                      setTotalUsdtInput("");
+                      setTotalThbInput("");
+                      setSelectedSiteIds([]);
+                      setCalcResults([]);
+                      setProfits({ min: 0, max: 0, minPct: 0, maxPct: 0 });
+                      resetAllMutation.mutate();
+                      toast({ title: "รีเซ็ตทั้งหมดแล้ว" });
+                    }}
+                    data-testid="button-reset-all"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" /> รีเซ็ต
+                  </Button>
                 </div>
                 </div>
               </CardContent>
