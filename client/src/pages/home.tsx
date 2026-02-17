@@ -1081,7 +1081,7 @@ function CalcAnimationOverlay({ siteNames, results, profits, onVideoEnd, onDismi
         <div className="text-center relative z-10 px-4 w-full max-w-lg">
           <video
             ref={videoRef}
-            src="/calc-animation.mp4"
+            src={transitionVideo}
             autoPlay
             playsInline
             onEnded={handleVideoEnd}
