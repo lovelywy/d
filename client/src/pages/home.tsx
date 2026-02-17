@@ -158,6 +158,8 @@ export default function App() {
   const [totalUsdtInput, setTotalUsdtInput] = useState<string>(() => {
     try { return localStorage.getItem("last-usdt") || "300"; } catch { return "300"; }
   });
+  const [totalThbInput, setTotalThbInput] = useState<string>("");
+  const [capitalInputMode, setCapitalInputMode] = useState<"usdt" | "thb">("usdt");
   const [exchangeRate, setExchangeRate] = useState<string>(() => {
     try { return localStorage.getItem("last-rate") || "35.5"; } catch { return "35.5"; }
   });
@@ -175,7 +177,9 @@ export default function App() {
   const [calcAnimation, setCalcAnimation] = useState<{ show: boolean; sites: string[]; results: any[] | null; profits: { min: number; max: number; minPct: number; maxPct: number } | null; numSites: number } | null>(null);
   const [showTransition, setShowTransition] = useState(false);
 
-  const totalCapitalThb = (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
+  const totalCapitalThb = capitalInputMode === "thb"
+    ? (parseFloat(totalThbInput) || 0)
+    : (parseFloat(totalUsdtInput) || 0) * (parseFloat(exchangeRate) || 0);
 
   const { data: sites = [] } = useQuery<Site[]>({ queryKey: ["/api/sites"] });
   const { data: historyList = [] } = useQuery<History[]>({ queryKey: ["/api/history"] });
@@ -301,11 +305,17 @@ export default function App() {
   }, []);
 
   const calculateSplit = (withVoice = false) => {
-    const rawUsdt = parseFloat(totalUsdtInput);
     const rate = parseFloat(exchangeRate);
     const selectedSites = sites.filter(s => selectedSiteIds.includes(s.id));
-    
-    if (isNaN(rawUsdt) || isNaN(rate) || selectedSites.length === 0) return;
+    let rawUsdt: number;
+    if (capitalInputMode === "thb") {
+      const thbVal = parseFloat(totalThbInput);
+      if (isNaN(thbVal) || isNaN(rate) || rate <= 0 || selectedSites.length === 0) return;
+      rawUsdt = thbVal / rate;
+    } else {
+      rawUsdt = parseFloat(totalUsdtInput);
+      if (isNaN(rawUsdt) || isNaN(rate) || selectedSites.length === 0) return;
+    }
 
     const feeTotal = selectedSites.length * 1;
     const netUsdt = rawUsdt - feeTotal;
@@ -513,12 +523,41 @@ export default function App() {
           <TabsContent value="calculator" className="space-y-3">
             <Card>
               <CardHeader><CardTitle>ทุนและอัตราแลกเปลี่ยน</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-0">
+              <CardContent className="space-y-3 pt-0">
+                <div className="flex gap-2 mb-1">
+                  <Button
+                    variant={capitalInputMode === "usdt" ? "default" : "outline"}
+                    size="sm"
+                    className="toggle-elevate"
+                    onClick={() => setCapitalInputMode("usdt")}
+                    data-testid="button-mode-usdt"
+                  >
+                    USDT
+                  </Button>
+                  <Button
+                    variant={capitalInputMode === "thb" ? "default" : "outline"}
+                    size="sm"
+                    className="toggle-elevate"
+                    onClick={() => setCapitalInputMode("thb")}
+                    data-testid="button-mode-thb"
+                  >
+                    THB (บาท)
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {capitalInputMode === "usdt" ? (
                 <div className="space-y-2">
                   <Label>จำนวน USDT ทั้งหมด</Label>
                   <Input data-testid="input-total-usdt" type="number" value={totalUsdtInput} onChange={e => setTotalUsdtInput(e.target.value)} />
                   <p className="text-xs text-muted-foreground">≈ {totalCapitalThb.toLocaleString()} THB (ทุนตั้งต้น)</p>
                 </div>
+                ) : (
+                <div className="space-y-2">
+                  <Label>เงินทุนตั้งต้น (บาท)</Label>
+                  <Input data-testid="input-total-thb" type="number" value={totalThbInput} onChange={e => setTotalThbInput(e.target.value)} placeholder="ใส่จำนวนเงินบาท" />
+                  <p className="text-xs text-muted-foreground">≈ {((parseFloat(totalThbInput) || 0) / (parseFloat(exchangeRate) || 1)).toFixed(2)} USDT</p>
+                </div>
+                )}
                 <div className="space-y-2">
                   <Label>อัตราแลก (THB/USDT)</Label>
                   <div className="flex gap-2">
@@ -555,6 +594,7 @@ export default function App() {
                     data-testid="button-calculate"
                   >คำนวณ</button>
                   <Button variant="outline" onClick={() => { setCalcResults([]); setProfits({ min: 0, max: 0, minPct: 0, maxPct: 0 }); }} data-testid="button-clear-calc">ล้าง</Button>
+                </div>
                 </div>
               </CardContent>
             </Card>
