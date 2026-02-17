@@ -1849,6 +1849,7 @@ function AnimatedNumber({ value, className = "" }: { value: number; className?: 
 function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: (site: Site, amount: string) => void, onBalanceSave: (id: number, bal: string) => void }) {
   const [bet, setBet] = useState("");
   const [localBalance, setLocalBalance] = useState(site.remainingBalance || "");
+  const [balanceSaved, setBalanceSaved] = useState(!!site.remainingBalance);
   const current = parseFloat(site.currentTurnover || "0");
   const target = parseFloat(site.targetTurnover || "0");
   const remaining = Math.max(0, target - current);
@@ -1869,11 +1870,21 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
 
   useEffect(() => {
     setLocalBalance(site.remainingBalance || "");
+    setBalanceSaved(!!site.remainingBalance);
   }, [site.remainingBalance]);
+
+  const handleBalanceConfirm = () => {
+    if (!localBalance.trim()) return;
+    playSfx('success');
+    triggerHaptic('medium');
+    onBalanceSave(site.id, localBalance);
+    setBalanceSaved(true);
+  };
 
   const handleBalanceBlur = () => {
     if (localBalance !== (site.remainingBalance || "")) {
       onBalanceSave(site.id, localBalance);
+      if (localBalance.trim()) setBalanceSaved(true);
     }
   };
 
@@ -1934,7 +1945,7 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
                   </span>
                 )}
               </div>
-              <div className="relative">
+              <div className="relative flex gap-2">
                 {!localBalance && (
                   <div className="absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full flex flex-col items-center gap-0.5 pointer-events-none z-10">
                     <span className="guide-pointer-glow text-emerald-400 text-lg">&#9755;</span>
@@ -1945,11 +1956,19 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
                   type="number"
                   placeholder="ป้อนยอดเงินสุทธิ"
                   value={localBalance}
-                  onChange={e => setLocalBalance(e.target.value)}
+                  onChange={e => { setLocalBalance(e.target.value); setBalanceSaved(false); }}
                   onBlur={handleBalanceBlur}
-                  onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
-                  className={!localBalance ? 'border-emerald-500/50 ring-1 ring-emerald-500/30' : ''}
+                  onKeyDown={e => { if (e.key === 'Enter') handleBalanceConfirm(); }}
+                  className={!localBalance ? 'border-emerald-500/50 ring-1 ring-emerald-500/30' : balanceSaved ? 'border-emerald-500/40' : ''}
                 />
+                <Button
+                  onClick={handleBalanceConfirm}
+                  disabled={!localBalance.trim()}
+                  className={balanceSaved ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                  data-testid={`button-confirm-balance-${site.id}`}
+                >
+                  {balanceSaved ? <><Check className="h-4 w-4 mr-1" /> บันทึกแล้ว</> : <><Check className="h-4 w-4 mr-1" /> ยืนยัน</>}
+                </Button>
               </div>
             </div>
           </div>
