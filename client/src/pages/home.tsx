@@ -733,10 +733,7 @@ export default function App() {
                       {selectedSiteIds.length} / 5 เว็บ
                       {selectedSiteIds.length >= 5 && <span className="text-primary ml-1">(เต็มแล้ว)</span>}
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      
+                    <NeonAddButton
                       disabled={selectedSiteIds.length >= 5 || sites.filter(s => !selectedSiteIds.includes(s.id)).length === 0}
                       onClick={() => {
                         const available = sites.filter(s => !selectedSiteIds.includes(s.id));
@@ -746,10 +743,10 @@ export default function App() {
                           setSelectedSiteIds(prev => [...prev, available[0].id]);
                         }
                       }}
-                      data-testid="button-add-row"
+                      testId="button-add-row"
                     >
                       <Plus className="mr-1 h-4 w-4" /> เพิ่มเว็บ
-                    </Button>
+                    </NeonAddButton>
                   </div>
 
                   {savedConfigs.length > 0 && (
@@ -1700,7 +1697,7 @@ function SiteManager({ sites, onAdd, onUpdate, onDelete }: {
           <div className="space-y-1"><Label className="text-xs">โบนัส %</Label><Input data-testid="input-site-bonus" type="number" value={bonus} onChange={e => setBonus(e.target.value)} /></div>
           <div className="col-span-2 space-y-1"><Label className="text-xs">เครดิตที่มีอยู่เดิม (บาท)</Label><Input data-testid="input-site-balance" type="number" value={balance} onChange={e => setBalance(e.target.value)} /></div>
         </div>
-        <Button className="w-full" onClick={() => { if (!name.trim()) return; playSfx('add'); triggerHaptic('medium'); onAdd({ name: name.trim(), depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); toast({ title: "เพิ่มเว็บแล้ว" }); }} data-testid="button-add-site"><Plus className="mr-1 h-4 w-4" /> เพิ่มเว็บ</Button>
+        <NeonAddButton className="w-full min-h-9" onClick={() => { if (!name.trim()) return; playSfx('add'); triggerHaptic('medium'); onAdd({ name: name.trim(), depositRate: rate, bonusPercent: bonus, existingBalance: balance }); setName(""); toast({ title: "เพิ่มเว็บแล้ว" }); }} testId="button-add-site"><Plus className="mr-1 h-4 w-4" /> เพิ่มเว็บ</NeonAddButton>
       </div>
 
       <div className="border-t pt-4">
@@ -1949,6 +1946,70 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function NeonAddButton({ onClick, disabled, className = "", children, testId }: {
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+  children: React.ReactNode;
+  testId?: string;
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [effects, setEffects] = useState<{ id: number; particles: { angle: number; dist: number; size: number }[] }[]>([]);
+  const nextId = useRef(0);
+
+  const fireEffect = useCallback(() => {
+    const id = nextId.current++;
+    const particles = Array.from({ length: 10 }, () => ({
+      angle: Math.random() * 360,
+      dist: 30 + Math.random() * 40,
+      size: 3 + Math.random() * 3,
+    }));
+    setEffects(prev => [...prev, { id, particles }]);
+    setTimeout(() => setEffects(prev => prev.filter(e => e.id !== id)), 800);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (disabled) return;
+    fireEffect();
+    onClick();
+  }, [disabled, fireEffect, onClick]);
+
+  return (
+    <button
+      ref={btnRef}
+      className={`neon-emerald-btn inline-flex items-center justify-center gap-1 rounded-md text-sm font-semibold px-3 min-h-8 whitespace-nowrap ${className}`}
+      onClick={handleClick}
+      disabled={disabled}
+      data-testid={testId}
+    >
+      {children}
+      {effects.map(eff => (
+        <span key={eff.id}>
+          <span className="neon-burst-ring" />
+          <span className="neon-burst-glow" />
+          {eff.particles.map((p, i) => (
+            <span
+              key={i}
+              className="neon-particle"
+              style={{
+                left: '50%',
+                top: '50%',
+                width: `${p.size}px`,
+                height: `${p.size}px`,
+                transform: `translate(-50%, -50%)`,
+                animation: `neon-particle 0.6s ease-out forwards`,
+                animationDelay: `${i * 0.02}s`,
+                ['--tx' as string]: `${Math.cos(p.angle * Math.PI / 180) * p.dist}px`,
+                ['--ty' as string]: `${Math.sin(p.angle * Math.PI / 180) * p.dist}px`,
+              }}
+            />
+          ))}
+        </span>
+      ))}
+    </button>
   );
 }
 
