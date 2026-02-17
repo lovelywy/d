@@ -1926,16 +1926,31 @@ function TrackerCard({ site, onUpdate, onBalanceSave }: { site: Site, onUpdate: 
           <div className="space-y-2">
             <p className="text-sm font-bold text-emerald-400 text-center" style={{ animation: 'calc-dot-bounce 2s ease-in-out infinite' }}>ครบเทิร์นแล้ว!</p>
             <div className="space-y-1">
-              <Label className="text-xs">ยอดเงินคงเหลือหลังเล่น (บาท)</Label>
-              <Input
-                data-testid={`input-remaining-${site.id}`}
-                type="number"
-                placeholder="ป้อนยอดเงินสุทธิ"
-                value={localBalance}
-                onChange={e => setLocalBalance(e.target.value)}
-                onBlur={handleBalanceBlur}
-                onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
-              />
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs">ยอดเงินคงเหลือหลังเล่น (บาท)</Label>
+                {!localBalance && (
+                  <span className="guide-pointer text-emerald-400 text-base leading-none">
+                    &#9759;
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                {!localBalance && (
+                  <div className="absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full flex flex-col items-center gap-0.5 pointer-events-none z-10">
+                    <span className="guide-pointer-glow text-emerald-400 text-lg">&#9755;</span>
+                  </div>
+                )}
+                <Input
+                  data-testid={`input-remaining-${site.id}`}
+                  type="number"
+                  placeholder="ป้อนยอดเงินสุทธิ"
+                  value={localBalance}
+                  onChange={e => setLocalBalance(e.target.value)}
+                  onBlur={handleBalanceBlur}
+                  onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+                  className={!localBalance ? 'border-emerald-500/50 ring-1 ring-emerald-500/30' : ''}
+                />
+              </div>
             </div>
           </div>
         ) : (
