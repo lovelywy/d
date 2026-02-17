@@ -534,7 +534,6 @@ export default function App() {
                       {fetchRateMutation.isPending ? 'กำลังโหลด...' : 'อัพเดทเรท'}
                     </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">ชดเชยอัตราแลกเปลี่ยน +0.11 จากเรทเรียลไทม์</p>
                 </div>
                 <div className="flex items-end gap-2">
                   <button
