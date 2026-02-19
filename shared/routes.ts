@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import { insertSiteSchema, sites, history, insertHistorySchema } from './schema';
+import { insertSiteSchema, sites, history, insertHistorySchema, insertBonusSiteSchema, bonusSites } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -69,6 +69,48 @@ export const api = {
     resetTurnover: {
       method: 'POST' as const,
       path: '/api/sites/reset-turnover',
+      responses: {
+        200: z.object({ message: z.string() }),
+      },
+    }
+  },
+  bonusSites: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/bonus-sites',
+      responses: {
+        200: z.array(z.custom<typeof bonusSites.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/bonus-sites',
+      input: insertBonusSiteSchema,
+      responses: {
+        201: z.custom<typeof bonusSites.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/bonus-sites/:id',
+      input: insertBonusSiteSchema.partial(),
+      responses: {
+        200: z.custom<typeof bonusSites.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/bonus-sites/:id',
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+    resetTurnover: {
+      method: 'POST' as const,
+      path: '/api/bonus-sites/reset-turnover',
       responses: {
         200: z.object({ message: z.string() }),
       },
