@@ -1,0 +1,162 @@
+to content
+Console
+npm run dev
+Workflows
+Learn more about configuring Workflows
+Database
+Databases
+Development Database
+29.32MB / 10GB
+Production Database
+29.06MB / 100GB
+Billing Period
+Renews monthly, 6 มี.ค.
+Hours of Compute Used
+3.51 hours
+Git
+Settings
+Remote
+Connections
+Bitbucket
+Bitbucket
+Disconnected
+GitLab
+GitLab
+Disconnected
+GitHub
+GitHub
+Disconnected
+Commit author
+BI
+newthanapak
+newthanapak
+Default Profile
+Billy <54185150-newthanapak@users.noreply.replit.com>
+Publishing
+Production
+Status
+Billy published 8 days ago
+Visibility
+Public
+Domain
+https://financial-simulator-tool--newthanapak.replit.app
+Type
+Autoscale
+(2 vCPU / 4 GiB RAM / 1 Max)
+See all usage
+Database
+Production database connected
+Your production database is ready! Your app can now save and manage live user data securely.
+8e088628
+BI
+newthanapak
+Billy
+published 8 days ago
+7e5d7738
+BI
+newthanapak
+Billy
+published 8 days ago
+78a5ce7b
+BI
+newthanapak
+Billy
+published 8 days ago
+f97aee93
+BI
+newthanapak
+Billy
+published 8 days ago
+82e791b6
+BI
+newthanapak
+Billy
+published 8 days ago
+e4a44a69
+BI
+newthanapak
+Billy
+published 8 days ago
+9ce905f8
+BI
+newthanapak
+Billy
+published 11 days ago
+a1d7bc9c
+BI
+newthanapak
+Billy
+failed to publish 11 days ago
+89bcde20
+BI
+newthanapak
+Billy
+published 12 days ago
+618a2fcc
+BI
+newthanapak
+Billy
+published 12 days ago
+124d0595
+BI
+newthanapak
+Billy
+published 12 days ago
+040d3268
+BI
+newthanapak
+Billy
+published 12 days ago
+09a03b0a
+BI
+newthanapak
+Billy
+published 14 days ago
+de30bfae
+BI
+newthanapak
+Billy
+published 15 days ago
+Preview
+/
+
+Agent
+ตัวเลขผลกำไรสุทธจะแทรกมาโชว์ด้านหน้าสุด เต็มหน้าจอ โดยใช้วิดีโอโปรยเหรียญเป็นแอนิเมชั่น แบคกราว แลตัวเลขกำไรแสดงพร้อมกับแอนิเมชั่นทันทีตั้งแต่แรก และเสียงพูดประกาศกำไรนั้น จะประกาศหลังเล่นเสียงในวิดีโอเอนิเมชั่นเสรก็จ1รอบ แล้ววนซ้ำ เอนิดมชั่นพร้อมตัวเลขกำไร จากนี้น ปล่อยเสียงเเเบคกราวมิวสิค อารมณรอๆชิวๆ จนกว่าผู้ใช้แตะจอแล้วจึงพาไปช่องบันทึกช◌ื◌่อผู้ใช้พร้อมสถิติประวัติ และพร้อมกับรีเซ๋ตล้างทุกย่างในหน่าtracker ทำเทิร์น เพื่อรอการคำนวณยอดฝากรอบต่อไป
+
+แสดงปุ่มลอยไว้สำหรับกลับมาหน้าแรกเสมอ
+
+เปลี่ยนชื่อหัวเรื่อง List Web ใหม่ เป็น 🧑‍💻Web 🌐 Secret©️
+
+ตรวจสอบระบบเสียงนำทาง และเสียงการประกาศผลดีเลย์ ตอนจบ_ารกิจ
+
+และปุ่มลิยหน้าโฮมต้องอยู่ด้านหน้าพร้อมกดและอยู่เหนือหน้าต่างเอนิเมชั่นเสมอ
+
+กดเสร็จสิ้นภารกิจแต่ติดปัญหาerror
+
+หลังจากบันทึกภารกิจ เปลี่ยนมาใช้เสียงปรกาศผลออกมาก่อนลำดับแรก ตามมาด้วย ไฟล์วิดีโอแอนิเมชั่นโปรยเหรียญพร้อมเสียงและเอฟเสียงเพลงแบคกราวน์ และสร้างรูปแบบการแสดง ตัวเลขผลกำไร ที่ได้ ให้เป็น3D text แบบ immersive massive big numeric pop-up effect motion seam typewriter with old keyboard sound effect after And Keep Animation of Vide backgroup loon run And The numeric of profit amount stay still on screen by compatible effle glitch Keep always on So Next When ever user touch any point on screen the app navigate user to Log History record App must required The name Of user set done Finally when complete with bet history log system automatically reset tracker turnover And List of web also It Could be done the same
+
+ลดขนาดความสูงแนวตั้งของ Header และFooter on web app page จัดระยะ ให้ไม่มีที่ว่างบนหัวและท้ายหน้าเว็บโดยคงอัตราคงามกว้างเท่าเดิม ลดแค่ความสูง หีวท้าย
+
+ลดขนาดความสูงไฟล์ทั้งหัวและท้ายกระดาษลดมาอีก15%โดนที่ไม่เปลี่ยนแปลงความหว้างไฟล์คลิปหัวและท้ายกนะดาษ
+
+ทำให้ช◌่องว่างในแต่ละแถวแนวตั้งชิดกันมากกว่าเดิม10%ในทุกแถว และ ทำให้ระยะ การเซ็น ย่อหน้าบนletter doaolog thigneat ทำให้ระยะ for minimal compact smart space saver theme style and Make the new Way of Navigate bottom more commercial user friendly touch button in main function much be put haptip feedback Vibration on it Depending on each function By Common responding on the navigation bottom categories pick up the way of haptic vibration properly
+Example
+Haptic vibration force .Depend on lAggresaive of rule leverage
+Whenever Mission of turn over complete
+USER Press Finish or done Button
+Volume Vibration Frequency Raise up depending with Amount of profit 5 Kind of set 1.Lose or no profit Short haptip...Ms
+2 Low pro fit Less than 1k Two short step vibration
+3.Normal profit 1K - Notmore than 5K vibration 1long step 2000ms
+Another step just keep in mind more profit
+More force vibration ok
+
+เพิ่มหมวดรายชื่อเว็บสำหรับ Web Bonus New user Deposit
+โดยหน้าการจัดการรายชื่อต้องแยกออกจากจัดการในหมวด [web secret]โดยผู้ใช้สามารถจัดการตั้งค่าและเพิ่มรายชื่อเว็บหมวดนี้ได้เช่นกัน โดย มีรายลพเอียดที่ต้องป้อนที่แตกต่างจากหมวดเดิมดังนี้
+1.รสยชื่อเว็บ สำหรับฝากรับโบนัสสมาชิกใหม่
+2.เปอร์เซ็นต์โบนัส
+3.จำนวนเงินสูงสุดที่สามารถรับได้จากโบนัส
+4.จำนวนเท่าของยอดเดิมพันหมุนเวียนสะสม [คิดจากยอดฝาก+โบนัส xกี่เท่า]
+5.เรทแลกเปลี่ยน
+
+โดยหากผู้ใช้เลือกเว็บในหมวดนี้เพิ่มมาในการคำนวณยอดฝากร่วมด้วยกันกับหมวด web secret จะใช้การคำนวณเพิ่มที่แตกต่างกัน
+โดย ผู้ใช้ต้องใส่ยอดเงินบาทท◌ี◌่ต้องการจะฝากในหมวดนี้ เพื่อให้การคิดคำนวณ ไปดึงยอดusdt ที่มีอยู่ก่อน การคำนวณยอดฝากในหมวดปกติ โดยยอดฝากหมวดใหม่นี้หากเพิ่มแล้ว ใส่จำนวนเงินบาท จากนั้นตัดusdtทีาต่องใช้จากอัตราแลกของเว็บ และหมวดนี้ไม่ต้องคำนวณยอดฝาก แต่ต้องแสดงยอดเงินรวมโบนัสหลังฝากไปคิดกำไรโชว์และคำนวยวณกำไรคาดการณ์ด้วนกันกับหมวดเดิม รวมถึงยอดเทิร์นโอเวอร์ที่ต้องทำให้ใช้สูตรคำนวณที่ยกตัวอย่างข้อ 4 นั้นมาแสดงและกำหนกในหน้าtrackef

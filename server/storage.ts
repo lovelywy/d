@@ -2,10 +2,14 @@
 import { db } from "./db";
 import {
   sites,
+  bonusSites,
   history,
   type Site,
   type InsertSite,
   type UpdateSiteRequest,
+  type BonusSite,
+  type InsertBonusSite,
+  type UpdateBonusSiteRequest,
   type History,
   type InsertHistory,
   type UpdateHistoryRequest
@@ -19,7 +23,11 @@ export interface IStorage {
   updateSite(id: number, updates: UpdateSiteRequest): Promise<Site>;
   deleteSite(id: number): Promise<void>;
   resetAllTurnover(): Promise<void>;
-  // History
+  getBonusSites(): Promise<BonusSite[]>;
+  createBonusSite(site: InsertBonusSite): Promise<BonusSite>;
+  updateBonusSite(id: number, updates: UpdateBonusSiteRequest): Promise<BonusSite>;
+  deleteBonusSite(id: number): Promise<void>;
+  resetBonusSiteTurnover(): Promise<void>;
   getHistory(): Promise<History[]>;
   createHistory(entry: InsertHistory): Promise<History>;
   updateHistory(id: number, updates: UpdateHistoryRequest): Promise<History>;
@@ -56,6 +64,37 @@ export class DatabaseStorage implements IStorage {
 
   async resetAllTurnover(): Promise<void> {
     await db.update(sites).set({ 
+      currentTurnover: '0',
+      targetTurnover: '0',
+      remainingBalance: null
+    });
+    await db.update(bonusSites).set({
+      currentTurnover: '0',
+      targetTurnover: '0',
+      remainingBalance: null
+    });
+  }
+
+  async getBonusSites(): Promise<BonusSite[]> {
+    return await db.select().from(bonusSites).orderBy(bonusSites.id);
+  }
+
+  async createBonusSite(site: InsertBonusSite): Promise<BonusSite> {
+    const [created] = await db.insert(bonusSites).values(site).returning();
+    return created;
+  }
+
+  async updateBonusSite(id: number, updates: UpdateBonusSiteRequest): Promise<BonusSite> {
+    const [updated] = await db.update(bonusSites).set(updates).where(eq(bonusSites.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBonusSite(id: number): Promise<void> {
+    await db.delete(bonusSites).where(eq(bonusSites.id, id));
+  }
+
+  async resetBonusSiteTurnover(): Promise<void> {
+    await db.update(bonusSites).set({
       currentTurnover: '0',
       targetTurnover: '0',
       remainingBalance: null

@@ -108,6 +108,51 @@ export async function registerRoutes(
     res.json({ message: "All turnovers reset" });
   });
 
+  // === BONUS SITES ===
+  app.get(api.bonusSites.list.path, async (_req, res) => {
+    const list = await storage.getBonusSites();
+    res.json(list);
+  });
+
+  app.post(api.bonusSites.create.path, async (req, res) => {
+    try {
+      const input = api.bonusSites.create.input.parse(req.body);
+      const site = await storage.createBonusSite(input);
+      res.status(201).json(site);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      }
+      throw err;
+    }
+  });
+
+  app.put(api.bonusSites.update.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const input = api.bonusSites.update.input.parse(req.body);
+      const site = await storage.updateBonusSite(id, input);
+      res.json(site);
+    } catch (err) {
+      res.status(404).json({ message: "Bonus site not found" });
+    }
+  });
+
+  app.delete(api.bonusSites.delete.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      await storage.deleteBonusSite(id);
+      res.status(204).send();
+    } catch (err) {
+      res.status(404).json({ message: "Bonus site not found" });
+    }
+  });
+
+  app.post(api.bonusSites.resetTurnover.path, async (_req, res) => {
+    await storage.resetBonusSiteTurnover();
+    res.json({ message: "All bonus site turnovers reset" });
+  });
+
   // === HISTORY ===
   app.get(api.history.list.path, async (_req, res) => {
     const history = await storage.getHistory();
